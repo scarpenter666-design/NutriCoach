@@ -1,0 +1,1521 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0f1a0f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="NutriCoach">
+<title>NutriCoach</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/svg+xml" href="icon.svg">
+<link rel="apple-touch-icon" href="icon.svg">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0f1a0f;
+  --bg2: #162016;
+  --bg3: #1e2d1e;
+  --card: #1a2a1a;
+  --card2: #213021;
+  --accent: #7ec850;
+  --accent2: #5aad30;
+  --accent3: #a8e070;
+  --text: #e8f0e8;
+  --text2: #a8c0a8;
+  --text3: #6a886a;
+  --border: #2a3d2a;
+  --protein: #e87c50;
+  --carbs: #50a8e8;
+  --fat: #e8d050;
+  --radius: 16px;
+  --radius-sm: 10px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+h1,h2,h3 { font-family: 'Playfair Display', serif; }
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg2); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* ── HEADER ── */
+.header {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(15,26,15,0.92);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+  padding: 0 20px;
+  display: flex; align-items: center; justify-content: space-between;
+  height: 60px;
+}
+.header-logo { font-family:'Playfair Display',serif; font-size:1.4rem; color:var(--accent); font-weight:700; }
+.header-logo span { color: var(--text2); font-size:0.85rem; font-family:'DM Sans',sans-serif; font-weight:300; margin-left:8px; }
+.header-actions { display:flex; gap:8px; }
+.btn-icon {
+  background: var(--card); border: 1px solid var(--border);
+  color: var(--text2); border-radius: var(--radius-sm);
+  padding: 8px 14px; font-size:0.8rem; cursor:pointer;
+  transition: all 0.2s; font-family:'DM Sans',sans-serif;
+  display:flex; align-items:center; gap:6px;
+}
+.btn-icon:hover { background:var(--card2); color:var(--accent); border-color:var(--accent); }
+
+/* ── NAV ── */
+.nav {
+  display: flex; gap: 4px;
+  padding: 12px 20px;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+}
+.nav-btn {
+  background: transparent; border: 1px solid transparent;
+  color: var(--text3); border-radius: var(--radius-sm);
+  padding: 8px 16px; font-size:0.85rem; cursor:pointer;
+  transition: all 0.2s; font-family:'DM Sans',sans-serif;
+  white-space: nowrap; font-weight:500;
+}
+.nav-btn:hover { color:var(--text2); border-color:var(--border); }
+.nav-btn.active { background:var(--accent); color:#0f1a0f; font-weight:600; border-color:var(--accent); }
+
+/* ── MAIN ── */
+.main { padding: 24px 20px; max-width: 900px; margin: 0 auto; }
+
+/* ── CARDS ── */
+.card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 20px; margin-bottom: 16px;
+}
+.card-header {
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom: 16px;
+}
+.card-title { font-size:1.1rem; font-weight:600; color:var(--accent3); }
+
+/* ── SETUP / ONBOARDING ── */
+.setup-hero {
+  text-align:center; padding: 40px 20px;
+}
+.setup-hero h1 { font-size:2.5rem; color:var(--accent); margin-bottom:8px; }
+.setup-hero p { color:var(--text2); font-size:1rem; margin-bottom:32px; }
+
+.api-section { margin-bottom:24px; }
+.label { font-size:0.8rem; color:var(--text3); margin-bottom:6px; text-transform:uppercase; letter-spacing:0.05em; }
+.input {
+  width:100%; background:var(--bg3); border:1px solid var(--border);
+  color:var(--text); border-radius:var(--radius-sm); padding:12px 16px;
+  font-size:0.9rem; font-family:'DM Sans',sans-serif;
+  transition: border-color 0.2s;
+}
+.input:focus { outline:none; border-color:var(--accent); }
+select.input option { background:var(--bg3); }
+
+.form-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+@media(max-width:600px){ .form-grid { grid-template-columns:1fr; } }
+
+.form-group { display:flex; flex-direction:column; gap:6px; }
+
+/* ── BUTTONS ── */
+.btn {
+  background:var(--accent); color:#0f1a0f; border:none;
+  border-radius:var(--radius-sm); padding:12px 24px;
+  font-size:0.95rem; font-weight:600; cursor:pointer;
+  font-family:'DM Sans',sans-serif; transition: all 0.2s;
+  display:inline-flex; align-items:center; gap:8px;
+}
+.btn:hover { background:var(--accent3); transform:translateY(-1px); }
+.btn:active { transform:translateY(0); }
+.btn:disabled { opacity:0.5; cursor:not-allowed; transform:none; }
+.btn-outline {
+  background:transparent; color:var(--accent); border:1px solid var(--accent);
+  border-radius:var(--radius-sm); padding:10px 20px;
+  font-size:0.85rem; font-weight:600; cursor:pointer;
+  font-family:'DM Sans',sans-serif; transition: all 0.2s;
+  display:inline-flex; align-items:center; gap:6px;
+}
+.btn-outline:hover { background:var(--accent); color:#0f1a0f; }
+.btn-danger {
+  background:transparent; color:#e85050; border:1px solid #e85050;
+  border-radius:var(--radius-sm); padding:8px 14px;
+  font-size:0.8rem; cursor:pointer; font-family:'DM Sans',sans-serif;
+  transition: all 0.2s;
+}
+.btn-danger:hover { background:#e85050; color:#fff; }
+.btn-sm { padding:7px 14px; font-size:0.8rem; }
+
+/* ── LOADING ── */
+.loading-wrap { text-align:center; padding:60px 20px; }
+.spinner {
+  width:48px; height:48px; border:3px solid var(--border);
+  border-top-color:var(--accent); border-radius:50%;
+  animation:spin 0.8s linear infinite; margin:0 auto 16px;
+}
+@keyframes spin { to { transform:rotate(360deg); } }
+.loading-text { color:var(--text2); font-size:0.9rem; }
+.loading-steps { margin-top:12px; color:var(--text3); font-size:0.8rem; }
+
+/* ── WEEK PLAN ── */
+.day-card {
+  background:var(--card); border:1px solid var(--border);
+  border-radius:var(--radius); margin-bottom:12px; overflow:hidden;
+}
+.day-header {
+  background:var(--card2); padding:12px 20px;
+  display:flex; align-items:center; justify-content:space-between;
+  cursor:pointer; user-select:none;
+}
+.day-name { font-weight:600; font-size:0.95rem; color:var(--accent3); }
+.day-kcal { font-size:0.8rem; color:var(--text3); }
+.day-toggle { color:var(--text3); font-size:1rem; transition:transform 0.2s; }
+.day-toggle.open { transform:rotate(180deg); }
+.day-body { padding:16px 20px; display:none; }
+.day-body.open { display:block; }
+
+.meal-row {
+  display:grid; grid-template-columns:80px 1fr auto;
+  gap:12px; align-items:start; padding:12px 0;
+  border-bottom:1px solid var(--border);
+}
+.meal-row:last-child { border-bottom:none; }
+.meal-type {
+  font-size:0.75rem; text-transform:uppercase; letter-spacing:0.08em;
+  color:var(--text3); font-weight:600; padding-top:2px;
+}
+.meal-name { font-weight:600; font-size:0.95rem; margin-bottom:4px; }
+.meal-meta { font-size:0.78rem; color:var(--text3); display:flex; gap:8px; flex-wrap:wrap; }
+.meal-badge {
+  background:var(--bg3); border:1px solid var(--border);
+  border-radius:4px; padding:2px 7px; font-size:0.72rem; color:var(--text2);
+}
+.meal-badge.mealprep { background:rgba(126,200,80,0.1); border-color:var(--accent); color:var(--accent); }
+.meal-actions { display:flex; gap:6px; }
+.btn-meal {
+  background:var(--bg3); border:1px solid var(--border); color:var(--text3);
+  border-radius:8px; padding:6px 10px; font-size:0.75rem; cursor:pointer;
+  transition:all 0.2s; font-family:'DM Sans',sans-serif;
+}
+.btn-meal:hover { border-color:var(--accent); color:var(--accent); background:rgba(126,200,80,0.08); }
+
+/* ── MACROS BAR ── */
+.macros-bar { display:flex; gap:10px; flex-wrap:wrap; margin-top:6px; }
+.macro-chip {
+  display:flex; align-items:center; gap:5px;
+  font-size:0.75rem; color:var(--text2);
+}
+.macro-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+
+/* ── NÄHRWERTE TAB ── */
+.nutrients-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:12px; }
+.nutrient-card {
+  background:var(--card); border:1px solid var(--border);
+  border-radius:var(--radius-sm); padding:16px;
+}
+.nutrient-day { font-size:0.75rem; color:var(--text3); margin-bottom:8px; text-transform:uppercase; letter-spacing:0.06em; }
+.nutrient-total { font-size:1.4rem; font-weight:700; color:var(--accent); margin-bottom:8px; }
+.nutrient-row { display:flex; justify-content:space-between; font-size:0.8rem; color:var(--text2); padding:3px 0; }
+.nutrient-val { font-weight:600; }
+.nut-protein { color:var(--protein); }
+.nut-carbs { color:var(--carbs); }
+.nut-fat { color:var(--fat); }
+
+/* ── EINKAUFSLISTE ── */
+.shop-controls { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; }
+.shop-category { margin-bottom:20px; }
+.shop-cat-title {
+  font-size:0.75rem; text-transform:uppercase; letter-spacing:0.08em;
+  color:var(--accent); margin-bottom:8px; padding-bottom:6px;
+  border-bottom:1px solid var(--border);
+}
+.shop-item {
+  display:flex; align-items:center; gap:12px;
+  padding:10px 0; border-bottom:1px solid rgba(42,61,42,0.5);
+  cursor:pointer; transition:opacity 0.2s;
+}
+.shop-item.checked { opacity:0.4; }
+.shop-item.checked .shop-item-name { text-decoration:line-through; }
+.shop-checkbox {
+  width:20px; height:20px; border:2px solid var(--border);
+  border-radius:5px; flex-shrink:0; display:flex;
+  align-items:center; justify-content:center; transition:all 0.2s;
+  background:transparent;
+}
+.shop-item.checked .shop-checkbox { background:var(--accent); border-color:var(--accent); }
+.shop-item.checked .shop-checkbox::after { content:'✓'; color:#0f1a0f; font-size:0.75rem; font-weight:700; }
+.shop-item-name { font-size:0.9rem; flex:1; }
+.shop-item-amount { font-size:0.8rem; color:var(--text3); }
+
+/* ── MEALPREP ── */
+.mealprep-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:12px; }
+.mealprep-card {
+  background:var(--card); border:1px solid var(--accent);
+  border-radius:var(--radius-sm); padding:16px;
+  border-left:3px solid var(--accent);
+}
+.mealprep-name { font-weight:600; margin-bottom:8px; }
+.mealprep-meta { font-size:0.8rem; color:var(--text2); margin-bottom:8px; }
+.mealprep-tip {
+  background:rgba(126,200,80,0.08); border-radius:8px;
+  padding:8px 12px; font-size:0.78rem; color:var(--text2);
+}
+
+/* ── REZEPT MODAL ── */
+.modal-overlay {
+  position:fixed; inset:0; background:rgba(0,0,0,0.7);
+  backdrop-filter:blur(6px); z-index:200;
+  display:flex; align-items:center; justify-content:center;
+  padding:20px; opacity:0; pointer-events:none; transition:opacity 0.25s;
+}
+.modal-overlay.open { opacity:1; pointer-events:all; }
+.modal {
+  background:var(--bg2); border:1px solid var(--border);
+  border-radius:var(--radius); max-width:640px; width:100%;
+  max-height:85vh; overflow-y:auto;
+  transform:translateY(20px); transition:transform 0.25s;
+}
+.modal-overlay.open .modal { transform:translateY(0); }
+.modal-header {
+  position:sticky; top:0; background:var(--bg2);
+  border-bottom:1px solid var(--border);
+  padding:16px 20px; display:flex; justify-content:space-between; align-items:center;
+}
+.modal-title { font-family:'Playfair Display',serif; font-size:1.2rem; color:var(--accent3); }
+.modal-close {
+  background:var(--card); border:1px solid var(--border); color:var(--text2);
+  border-radius:8px; padding:6px 12px; cursor:pointer; font-size:0.85rem;
+  font-family:'DM Sans',sans-serif;
+}
+.modal-close:hover { background:var(--card2); }
+.modal-body { padding:20px; }
+
+.recipe-meta-row {
+  display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px;
+}
+.recipe-badge {
+  background:var(--bg3); border:1px solid var(--border);
+  border-radius:6px; padding:5px 10px; font-size:0.78rem; color:var(--text2);
+}
+.macros-grid {
+  display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:20px;
+}
+.macro-box {
+  background:var(--bg3); border-radius:var(--radius-sm);
+  padding:10px; text-align:center;
+}
+.macro-box-val { font-size:1.1rem; font-weight:700; }
+.macro-box-label { font-size:0.7rem; color:var(--text3); margin-top:2px; }
+
+.recipe-section-title {
+  font-size:0.75rem; text-transform:uppercase; letter-spacing:0.08em;
+  color:var(--accent); margin:16px 0 10px; padding-bottom:6px;
+  border-bottom:1px solid var(--border);
+}
+.ingredient-list { list-style:none; }
+.ingredient-list li {
+  padding:7px 0; border-bottom:1px solid rgba(42,61,42,0.4);
+  font-size:0.88rem; display:flex; justify-content:space-between;
+}
+.ingredient-alt { font-size:0.75rem; color:var(--text3); }
+.step-list { list-style:none; counter-reset:steps; }
+.step-item {
+  display:flex; gap:14px; padding:10px 0;
+  border-bottom:1px solid rgba(42,61,42,0.4);
+  font-size:0.88rem; line-height:1.6; color:var(--text2);
+}
+.step-num {
+  counter-increment:steps;
+  width:26px; height:26px; border-radius:50%;
+  background:var(--accent); color:#0f1a0f;
+  font-size:0.75rem; font-weight:700;
+  display:flex; align-items:center; justify-content:center; flex-shrink:0;
+}
+.mealprep-hint {
+  background:rgba(126,200,80,0.06); border:1px solid rgba(126,200,80,0.2);
+  border-radius:var(--radius-sm); padding:12px 16px; margin-top:12px;
+  font-size:0.82rem; color:var(--text2); line-height:1.6;
+}
+
+/* ── BIBLIOTHEK ── */
+.lib-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:12px; }
+.lib-card {
+  background:var(--card); border:1px solid var(--border);
+  border-radius:var(--radius-sm); padding:16px;
+  transition:border-color 0.2s;
+}
+.lib-card:hover { border-color:var(--accent); }
+.lib-card-name { font-weight:600; margin-bottom:6px; }
+.lib-card-meta { font-size:0.78rem; color:var(--text3); margin-bottom:10px; }
+.lib-card-macros { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
+.lib-macro { font-size:0.75rem; padding:3px 8px; border-radius:4px; background:var(--bg3); }
+.lib-card-actions { display:flex; gap:8px; }
+
+/* ── EMPTY STATE ── */
+.empty-state {
+  text-align:center; padding:60px 20px; color:var(--text3);
+}
+.empty-icon { font-size:3rem; margin-bottom:16px; opacity:0.5; }
+.empty-title { font-size:1.1rem; color:var(--text2); margin-bottom:8px; }
+.empty-sub { font-size:0.85rem; }
+
+/* ── TOAST ── */
+.toast {
+  position:fixed; bottom:24px; right:24px; z-index:300;
+  background:var(--accent); color:#0f1a0f;
+  border-radius:var(--radius-sm); padding:12px 20px;
+  font-size:0.88rem; font-weight:600;
+  transform:translateY(100px); opacity:0; transition:all 0.3s;
+  max-width:280px;
+}
+.toast.show { transform:translateY(0); opacity:1; }
+
+/* ── SETTINGS ── */
+.settings-section { margin-bottom:24px; }
+.settings-title { font-size:0.85rem; color:var(--text3); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:12px; }
+
+/* ── TAGS ── */
+.tag {
+  display:inline-block; background:rgba(126,200,80,0.1);
+  border:1px solid rgba(126,200,80,0.3); color:var(--accent);
+  border-radius:6px; padding:3px 10px; font-size:0.75rem; margin:3px;
+}
+
+/* ── DIVIDER ── */
+.divider { border:none; border-top:1px solid var(--border); margin:20px 0; }
+
+@media(max-width:600px){
+  .meal-row { grid-template-columns:60px 1fr; }
+  .meal-actions { grid-column:2; }
+  .macros-grid { grid-template-columns:repeat(2,1fr); }
+  .header-logo span { display:none; }
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-logo">🥗 NutriCoach <span>Ernährungsberater</span></div>
+  <div class="header-actions">
+    <button class="btn-icon" id="installBtn" onclick="installPWA()" style="display:none;background:rgba(126,200,80,0.15);border-color:var(--accent);color:var(--accent)">📲 Installieren</button>
+    <button class="btn-icon" onclick="showTab('settings')">⚙️ Einstellungen</button>
+  </div>
+</div>
+
+<!-- NAV -->
+<div class="nav" id="mainNav" style="display:none">
+  <button class="nav-btn active" onclick="showTab('plan')" id="tab-plan">📅 Wochenplan</button>
+  <button class="nav-btn" onclick="showTab('nutrients')" id="tab-nutrients">📊 Nährwerte</button>
+  <button class="nav-btn" onclick="showTab('shopping')" id="tab-shopping">🛒 Einkaufsliste</button>
+  <button class="nav-btn" onclick="showTab('mealprep')" id="tab-mealprep">🍱 Meal-Prep</button>
+  <button class="nav-btn" onclick="showTab('library')" id="tab-library">📚 Rezeptbibliothek</button>
+  <button class="nav-btn" onclick="showTab('new')" id="tab-new">✨ Neuer Plan</button>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- ── SETUP ── -->
+  <div id="view-setup">
+    <div class="setup-hero">
+      <h1>NutriCoach</h1>
+      <p>Dein persönlicher KI-Ernährungsberater für eiweißreiche, budgetfreundliche Ernährung</p>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">🔑 API-Key einrichten</div></div>
+      <div class="api-section">
+        <div class="label">Anthropic API-Key</div>
+        <input type="password" class="input" id="apiKeyInput" placeholder="sk-ant-api03-...">
+        <div style="margin-top:8px;font-size:0.78rem;color:var(--text3);">
+          Key wird nur lokal gespeichert. Erhältlich auf <a href="https://console.anthropic.com" target="_blank" style="color:var(--accent)">console.anthropic.com</a>
+        </div>
+      </div>
+      <button class="btn" onclick="saveApiKey()">Weiter →</button>
+    </div>
+  </div>
+
+  <!-- ── ONBOARDING ── -->
+  <div id="view-onboarding" style="display:none">
+    <div class="card">
+      <div class="card-header"><div class="card-title">👋 Lass uns starten!</div></div>
+      <p style="color:var(--text2);font-size:0.88rem;margin-bottom:20px;">Beantworte kurz ein paar Fragen, damit ich den perfekten Plan für dich erstellen kann.</p>
+      <div class="form-grid">
+        <div class="form-group">
+          <div class="label">Fitnessziel</div>
+          <select class="input" id="ob-goal">
+            <option value="Muskelaufbau">💪 Muskelaufbau</option>
+            <option value="Abnehmen">🏃 Abnehmen</option>
+            <option value="Gewicht halten">⚖️ Gewicht halten</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <div class="label">Wochenbudget für Lebensmittel</div>
+          <select class="input" id="ob-budget">
+            <option value="unter 30€ (sehr günstig)">unter 30€ (sehr günstig)</option>
+            <option value="30–50€ (Low Budget)" selected>30–50€ (Low Budget)</option>
+            <option value="50–80€ (mittel)">50–80€ (mittel)</option>
+            <option value="über 80€ (flexibel)">über 80€ (flexibel)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <div class="label">Für wie viele Personen?</div>
+          <select class="input" id="ob-persons">
+            <option value="1">1 Person</option>
+            <option value="2" selected>2 Personen</option>
+            <option value="3">3 Personen</option>
+            <option value="4">4 Personen</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <div class="label">Planungszeitraum</div>
+          <select class="input" id="ob-days">
+            <option value="3">3 Tage</option>
+            <option value="5" selected>5 Tage (Arbeitswoche)</option>
+            <option value="7">7 Tage (komplette Woche)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <div class="label">Ernährungsweise</div>
+          <select class="input" id="ob-diet">
+            <option value="Mit Fleisch & Fisch">🥩 Mit Fleisch & Fisch</option>
+            <option value="Vegetarisch">🥦 Vegetarisch</option>
+            <option value="Vegan">🌱 Vegan</option>
+            <option value="Flexitarisch (überwiegend vegetarisch)">🥗 Flexitarisch</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <div class="label">Meal-Prep gewünscht?</div>
+          <select class="input" id="ob-mealprep">
+            <option value="Nein">Nein</option>
+            <option value="Ja, für 3 Tage">Ja, für 3 Tage</option>
+            <option value="Ja, für 5 Tage">Ja, für 5 Tage</option>
+            <option value="Ja, für 7 Tage">Ja, für 7 Tage</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <div class="label">Einkaufsliste Format</div>
+          <select class="input" id="ob-shopformat">
+            <option value="Beides">Beides (Kategorien + nach Rezept)</option>
+            <option value="Kategorien">Nach Supermarkt-Kategorien</option>
+            <option value="Rezept">Nach Rezept sortiert</option>
+          </select>
+        </div>
+      </div>
+      <hr style="border:none;border-top:1px solid var(--border);margin:20px 0">
+      <div style="font-size:0.85rem;color:var(--accent3);font-weight:600;margin-bottom:14px">👤 Körperdaten (für präzise Kalorienberechnung)</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <div class="label">Geschlecht</div>
+          <select class="input" id="ob-gender">
+            <option value="männlich">♂ Männlich</option>
+            <option value="weiblich">♀ Weiblich</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <div class="label">Alter (Jahre)</div>
+          <input type="number" class="input" id="ob-age" placeholder="z.B. 30" min="16" max="99">
+        </div>
+        <div class="form-group">
+          <div class="label">Größe (cm)</div>
+          <input type="number" class="input" id="ob-height" placeholder="z.B. 178" min="140" max="220">
+        </div>
+        <div class="form-group">
+          <div class="label">Gewicht (kg)</div>
+          <input type="number" class="input" id="ob-weight" placeholder="z.B. 80" min="40" max="250">
+        </div>
+        <div class="form-group">
+          <div class="label">Aktivitätslevel</div>
+          <select class="input" id="ob-activity">
+            <option value="wenig aktiv (Bürojob, kaum Sport)">🪑 Wenig aktiv (Bürojob)</option>
+            <option value="moderat aktiv (1-3x Sport/Woche)" selected>🚶 Moderat aktiv (1–3x/Woche)</option>
+            <option value="sehr aktiv (4-5x Sport/Woche)">🏋️ Sehr aktiv (4–5x/Woche)</option>
+            <option value="extrem aktiv (täglich intensiv)">⚡ Extrem aktiv (täglich)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <div class="label">Ø Trainingsverbrauch (kcal/Tag) <span style="color:var(--text3);font-size:0.72rem">optional, z.B. aus IronLog</span></div>
+          <input type="number" class="input" id="ob-training" placeholder="z.B. 350 (0 = kein Training)" min="0" max="2000">
+        </div>
+      </div>
+      <div class="form-group" style="margin-top:16px">
+        <div class="label">Allergien & Unverträglichkeiten</div>
+        <input type="text" class="input" id="ob-allergies" placeholder="z.B. Laktose, Gluten, Nüsse... (oder leer lassen)">
+      </div>
+      <div class="form-group" style="margin-top:12px">
+        <div class="label">Lebensmittel die du nicht magst</div>
+        <input type="text" class="input" id="ob-dislikes" placeholder="z.B. Fisch, Rosenkohl... (oder leer lassen)">
+      </div>
+      <div style="margin-top:24px;display:flex;gap:12px;flex-wrap:wrap;">
+        <button class="btn" onclick="generatePlan()" id="generateBtn">🚀 Plan erstellen</button>
+        <button class="btn-outline" onclick="showTab('settings')">Einstellungen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── LOADING ── -->
+  <div id="view-loading" style="display:none">
+    <div class="loading-wrap">
+      <div class="spinner"></div>
+      <div class="loading-text">NutriCoach erstellt deinen Plan...</div>
+      <div class="loading-steps" id="loadingStep">Analysiere deine Präferenzen...</div>
+    </div>
+  </div>
+
+  <!-- ── PLAN ── -->
+  <div id="view-plan" style="display:none">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
+      <div>
+        <h2 style="font-size:1.5rem;color:var(--accent3)" id="planTitle">Dein Ernährungsplan</h2>
+        <div style="font-size:0.82rem;color:var(--text3);margin-top:4px" id="planSubtitle"></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn-outline btn-sm" onclick="showTab('new')">✨ Neuer Plan</button>
+      </div>
+    </div>
+    <div id="planContent"></div>
+  </div>
+
+  <!-- ── NUTRIENTS ── -->
+  <div id="view-nutrients" style="display:none">
+    <h2 style="font-size:1.4rem;color:var(--accent3);margin-bottom:20px">📊 Nährwertübersicht</h2>
+    <div id="nutrientsContent"></div>
+  </div>
+
+  <!-- ── SHOPPING ── -->
+  <div id="view-shopping" style="display:none">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:12px;">
+      <h2 style="font-size:1.4rem;color:var(--accent3)">🛒 Einkaufsliste</h2>
+    </div>
+    <div class="shop-controls">
+      <button class="btn-outline btn-sm" onclick="clearCheckedItems()">🗑 Abgehakte löschen</button>
+      <button class="btn-danger" onclick="clearAllItems()">✕ Alle löschen</button>
+    </div>
+    <div id="shoppingContent"></div>
+  </div>
+
+  <!-- ── MEALPREP ── -->
+  <div id="view-mealprep" style="display:none">
+    <h2 style="font-size:1.4rem;color:var(--accent3);margin-bottom:20px">🍱 Meal-Prep Übersicht</h2>
+    <div id="mealprepContent"></div>
+  </div>
+
+  <!-- ── LIBRARY ── -->
+  <div id="view-library" style="display:none">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
+      <h2 style="font-size:1.4rem;color:var(--accent3)">📚 Rezeptbibliothek</h2>
+      <div style="font-size:0.82rem;color:var(--text3)" id="libCount"></div>
+    </div>
+    <div id="libraryContent"></div>
+  </div>
+
+  <!-- ── NEW PLAN ── -->
+  <div id="view-new" style="display:none">
+    <div class="card">
+      <div class="card-header"><div class="card-title">✨ Neuen Plan erstellen</div></div>
+      <p style="color:var(--text2);font-size:0.88rem;margin-bottom:20px;">Passe deine Einstellungen an und erstelle einen neuen Plan.</p>
+      <div class="form-grid">
+        <div class="form-group">
+          <div class="label">Fitnessziel</div>
+          <select class="input" id="new-goal">
+            <option value="Muskelaufbau">💪 Muskelaufbau</option>
+            <option value="Abnehmen">🏃 Abnehmen</option>
+            <option value="Gewicht halten">⚖️ Gewicht halten</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <div class="label">Wochenbudget</div>
+          <select class="input" id="new-budget">
+            <option value="unter 30€ (sehr günstig)">unter 30€ (sehr günstig)</option>
+            <option value="30–50€ (Low Budget)" selected>30–50€ (Low Budget)</option>
+            <option value="50–80€ (mittel)">50–80€ (mittel)</option>
+            <option value="über 80€ (flexibel)">über 80€ (flexibel)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <div class="label">Personen</div>
+          <select class="input" id="new-persons">
+            <option value="1">1 Person</option>
+            <option value="2" selected>2 Personen</option>
+            <option value="3">3 Personen</option>
+            <option value="4">4 Personen</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <div class="label">Planungszeitraum</div>
+          <select class="input" id="new-days">
+            <option value="3">3 Tage</option>
+            <option value="5" selected>5 Tage</option>
+            <option value="7">7 Tage</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <div class="label">Ernährungsweise</div>
+          <select class="input" id="new-diet">
+            <option value="Mit Fleisch & Fisch">🥩 Mit Fleisch & Fisch</option>
+            <option value="Vegetarisch">🥦 Vegetarisch</option>
+            <option value="Vegan">🌱 Vegan</option>
+            <option value="Flexitarisch (überwiegend vegetarisch)">🥗 Flexitarisch</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <div class="label">Meal-Prep</div>
+          <select class="input" id="new-mealprep">
+            <option value="Nein">Nein</option>
+            <option value="Ja, für 3 Tage">Ja, 3 Tage</option>
+            <option value="Ja, für 5 Tage">Ja, 5 Tage</option>
+            <option value="Ja, für 7 Tage">Ja, 7 Tage</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <div class="label">Einkaufsliste</div>
+          <select class="input" id="new-shopformat">
+            <option value="Beides">Beides</option>
+            <option value="Kategorien">Nach Kategorien</option>
+            <option value="Rezept">Nach Rezept</option>
+          </select>
+        </div>
+      </div>
+      <hr style="border:none;border-top:1px solid var(--border);margin:20px 0">
+      <div style="font-size:0.85rem;color:var(--accent3);font-weight:600;margin-bottom:14px">👤 Körperdaten</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <div class="label">Geschlecht</div>
+          <select class="input" id="new-gender">
+            <option value="männlich">♂ Männlich</option>
+            <option value="weiblich">♀ Weiblich</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <div class="label">Alter (Jahre)</div>
+          <input type="number" class="input" id="new-age" placeholder="z.B. 30" min="16" max="99">
+        </div>
+        <div class="form-group">
+          <div class="label">Größe (cm)</div>
+          <input type="number" class="input" id="new-height" placeholder="z.B. 178" min="140" max="220">
+        </div>
+        <div class="form-group">
+          <div class="label">Gewicht (kg)</div>
+          <input type="number" class="input" id="new-weight" placeholder="z.B. 80" min="40" max="250">
+        </div>
+        <div class="form-group">
+          <div class="label">Aktivitätslevel</div>
+          <select class="input" id="new-activity">
+            <option value="wenig aktiv (Bürojob, kaum Sport)">🪑 Wenig aktiv</option>
+            <option value="moderat aktiv (1-3x Sport/Woche)" selected>🚶 Moderat aktiv</option>
+            <option value="sehr aktiv (4-5x Sport/Woche)">🏋️ Sehr aktiv</option>
+            <option value="extrem aktiv (täglich intensiv)">⚡ Extrem aktiv</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <div class="label">Ø Trainingsverbrauch (kcal/Tag) <span style="color:var(--text3);font-size:0.72rem">aus IronLog o.ä.</span></div>
+          <input type="number" class="input" id="new-training" placeholder="z.B. 350 (0 = kein Training)" min="0" max="2000">
+        </div>
+      </div>
+      <div class="form-group" style="margin-top:16px">
+        <div class="label">Allergien & Unverträglichkeiten</div>
+        <input type="text" class="input" id="new-allergies" placeholder="z.B. Laktose, Gluten...">
+      </div>
+      <div class="form-group" style="margin-top:12px">
+        <div class="label">Nicht gemochte Lebensmittel</div>
+        <input type="text" class="input" id="new-dislikes" placeholder="z.B. Fisch, Rosenkohl...">
+      </div>
+      <div style="margin-top:24px">
+        <button class="btn" onclick="generateNewPlan()" id="generateNewBtn">🚀 Plan generieren</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SETTINGS ── -->
+  <div id="view-settings" style="display:none">
+    <h2 style="font-size:1.4rem;color:var(--accent3);margin-bottom:20px">⚙️ Einstellungen</h2>
+    <div class="card">
+      <div class="settings-section">
+        <div class="settings-title">API-Key</div>
+        <div class="form-group">
+          <div class="label">Anthropic API-Key</div>
+          <input type="password" class="input" id="settings-apikey" placeholder="sk-ant-api03-...">
+        </div>
+        <div style="margin-top:12px">
+          <button class="btn btn-sm" onclick="updateApiKey()">Speichern</button>
+        </div>
+      </div>
+      <hr class="divider">
+      <div class="settings-section">
+        <div class="settings-title">Daten</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn-danger" onclick="clearPlan()">Plan löschen</button>
+          <button class="btn-danger" onclick="clearLibrary()">Bibliothek löschen</button>
+          <button class="btn-danger" onclick="resetAll()">Alle Daten löschen</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<!-- REZEPT MODAL -->
+<div class="modal-overlay" id="recipeModal" onclick="closeModal(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modalTitle">Rezept</div>
+      <button class="modal-close" onclick="closeRecipeModal()">✕ Schließen</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── STATE ──
+let state = {
+  apiKey: localStorage.getItem('nc_apikey') || '',
+  plan: JSON.parse(localStorage.getItem('nc_plan') || 'null'),
+  profile: JSON.parse(localStorage.getItem('nc_profile') || 'null'),
+  shopping: JSON.parse(localStorage.getItem('nc_shopping') || '{}'),
+  library: JSON.parse(localStorage.getItem('nc_library') || '[]'),
+};
+
+// ── INIT ──
+function init() {
+  if (!state.apiKey) {
+    showView('setup');
+  } else if (!state.plan) {
+    showView('onboarding');
+    document.getElementById('mainNav').style.display = 'flex';
+  } else {
+    document.getElementById('mainNav').style.display = 'flex';
+    populateNewForm();
+    showTab('plan');
+    renderPlan();
+  }
+  const skInput = document.getElementById('settings-apikey');
+  if (skInput && state.apiKey) skInput.value = state.apiKey;
+}
+
+// ── VIEWS ──
+const VIEWS = ['setup','onboarding','loading','plan','nutrients','shopping','mealprep','library','new','settings'];
+function showView(name) {
+  VIEWS.forEach(v => {
+    const el = document.getElementById('view-'+v);
+    if (el) el.style.display = (v===name)?'block':'none';
+  });
+}
+
+function showTab(tab) {
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  const tabBtn = document.getElementById('tab-'+tab);
+  if (tabBtn) tabBtn.classList.add('active');
+
+  if (tab === 'plan') { showView('plan'); renderPlan(); }
+  else if (tab === 'nutrients') { showView('nutrients'); renderNutrients(); }
+  else if (tab === 'shopping') { showView('shopping'); renderShopping(); }
+  else if (tab === 'mealprep') { showView('mealprep'); renderMealprep(); }
+  else if (tab === 'library') { showView('library'); renderLibrary(); }
+  else if (tab === 'new') { showView('new'); populateNewForm(); }
+  else if (tab === 'settings') { showView('settings'); }
+}
+
+// ── API KEY ──
+function saveApiKey() {
+  const key = document.getElementById('apiKeyInput').value.trim();
+  if (!key.startsWith('sk-ant')) { showToast('❌ Ungültiger API-Key'); return; }
+  state.apiKey = key;
+  localStorage.setItem('nc_apikey', key);
+  document.getElementById('mainNav').style.display = 'flex';
+  showView('onboarding');
+  showToast('✅ API-Key gespeichert');
+}
+function updateApiKey() {
+  const key = document.getElementById('settings-apikey').value.trim();
+  if (!key) { showToast('❌ Kein Key eingegeben'); return; }
+  state.apiKey = key;
+  localStorage.setItem('nc_apikey', key);
+  showToast('✅ API-Key aktualisiert');
+}
+
+// ── GENERATE PLAN ──
+async function generatePlan() {
+  const profile = {
+    goal: document.getElementById('ob-goal').value,
+    budget: document.getElementById('ob-budget').value,
+    persons: document.getElementById('ob-persons').value,
+    days: document.getElementById('ob-days').value,
+    diet: document.getElementById('ob-diet').value,
+    mealprep: document.getElementById('ob-mealprep').value,
+    shopformat: document.getElementById('ob-shopformat').value,
+    allergies: document.getElementById('ob-allergies').value || 'keine',
+    dislikes: document.getElementById('ob-dislikes').value || 'keine',
+    gender: document.getElementById('ob-gender').value,
+    age: document.getElementById('ob-age').value || '',
+    height: document.getElementById('ob-height').value || '',
+    weight: document.getElementById('ob-weight').value || '',
+    activity: document.getElementById('ob-activity').value,
+    training: document.getElementById('ob-training').value || '0',
+  };
+  await callGeneratePlan(profile);
+}
+
+async function generateNewPlan() {
+  const profile = {
+    goal: document.getElementById('new-goal').value,
+    budget: document.getElementById('new-budget').value,
+    persons: document.getElementById('new-persons').value,
+    days: document.getElementById('new-days').value,
+    diet: document.getElementById('new-diet').value,
+    mealprep: document.getElementById('new-mealprep').value,
+    shopformat: document.getElementById('new-shopformat').value,
+    allergies: document.getElementById('new-allergies').value || 'keine',
+    dislikes: document.getElementById('new-dislikes').value || 'keine',
+    gender: document.getElementById('new-gender').value,
+    age: document.getElementById('new-age').value || '',
+    height: document.getElementById('new-height').value || '',
+    weight: document.getElementById('new-weight').value || '',
+    activity: document.getElementById('new-activity').value,
+    training: document.getElementById('new-training').value || '0',
+  };
+  await callGeneratePlan(profile);
+}
+
+async function callGeneratePlan(profile) {
+  showView('loading');
+  document.getElementById('mainNav').style.display = 'flex';
+
+  const steps = [
+    'Analysiere deine Präferenzen...',
+    'Erstelle ausgewogene Mahlzeiten...',
+    'Berechne Nährwerte...',
+    'Optimiere fürs Budget...',
+    'Erstelle Rezepte...',
+    'Generiere Einkaufsliste...',
+    'Finalisiere den Plan...',
+  ];
+  let si = 0;
+  const stepEl = document.getElementById('loadingStep');
+  const stepInterval = setInterval(() => {
+    stepEl.textContent = steps[si % steps.length];
+    si++;
+  }, 2500);
+
+  const systemPrompt = `Du bist NutriCoach, ein spezialisierter KI-Ernährungsberater.
+Antworte AUSSCHLIESSLICH mit einem validen JSON-Objekt. Kein Text davor oder danach.
+
+WICHTIG: Jeder Tag MUSS exakt 2 Mahlzeiten enthalten: eine mit "type": "Mittag" UND eine mit "type": "Abend". Niemals nur eine Mahlzeit pro Tag!
+
+Das JSON-Objekt muss exakt folgende Struktur haben:
+{
+  "plan": [
+    {
+      "day": "Montag",
+      "meals": [
+        {
+          "type": "Mittag",
+          "name": "Gerichtname",
+          "mealprep": true/false,
+          "calories": 650,
+          "protein": 45,
+          "carbs": 60,
+          "fat": 18,
+          "time": 25,
+          "difficulty": "Einfach",
+          "servings": 2,
+          "ingredients": [
+            {"name": "Hähnchenbrust", "amount": "300g", "alt": "Putenbrust"},
+            {"name": "Reis", "amount": "200g", "alt": null}
+          ],
+          "steps": [
+            "Hähnchenbrust würzen und in Stücke schneiden.",
+            "Reis in Salzwasser 18 Minuten kochen."
+          ],
+          "mealprepTip": "Hält 4 Tage im Kühlschrank. Sauce separat aufbewahren."
+        }
+      ]
+    }
+  ],
+  "shopping": {
+    "byCategory": {
+      "Gemüse & Obst": [{"name": "Brokkoli", "amount": "500g"}],
+      "Fleisch & Fisch": [{"name": "Hähnchenbrust", "amount": "600g"}],
+      "Kühlregal": [{"name": "Magerquark", "amount": "500g"}],
+      "Tiefkühl": [],
+      "Trockenwaren & Konserven": [{"name": "Reis", "amount": "1kg"}],
+      "Gewürze & Sonstiges": [{"name": "Olivenöl", "amount": "1 Flasche"}]
+    },
+    "byRecipe": [
+      {"recipe": "Gerichtname", "items": [{"name": "Hähnchenbrust", "amount": "300g"}]}
+    ],
+    "estimatedCost": "ca. 38€"
+  }
+}`;
+
+  // Kalorienbedarf berechnen (Mifflin-St-Jeor) wenn Körperdaten vorhanden
+  let kcalInfo = '';
+  if (profile.age && profile.height && profile.weight) {
+    const age = parseInt(profile.age);
+    const h = parseInt(profile.height);
+    const w = parseInt(profile.weight);
+    const training = parseInt(profile.training) || 0;
+    let bmr = profile.gender === 'männlich'
+      ? 10 * w + 6.25 * h - 5 * age + 5
+      : 10 * w + 6.25 * h - 5 * age - 161;
+    const actFactors = {
+      'wenig aktiv (Bürojob, kaum Sport)': 1.2,
+      'moderat aktiv (1-3x Sport/Woche)': 1.375,
+      'sehr aktiv (4-5x Sport/Woche)': 1.55,
+      'extrem aktiv (täglich intensiv)': 1.725,
+    };
+    const factor = actFactors[profile.activity] || 1.375;
+    let tdee = Math.round(bmr * factor) + training;
+    let targetKcal = tdee;
+    if (profile.goal === 'Muskelaufbau') targetKcal = tdee + 300;
+    if (profile.goal === 'Abnehmen') targetKcal = tdee - 500;
+    kcalInfo = `
+- Körperdaten: ${profile.gender}, ${age} Jahre, ${h} cm, ${w} kg
+- Aktivitätslevel: ${profile.activity}
+- Ø Trainingsverbrauch: ${training} kcal/Tag (z.B. aus IronLog)
+- Berechneter Gesamtbedarf (TDEE): ${tdee} kcal/Tag
+- Ziel-Kalorienzufuhr über Ernährung: ca. ${targetKcal} kcal/Tag (aufgeteilt auf Mittag + Abend)
+- Proteinziel: ca. ${Math.round(w * (profile.goal === 'Muskelaufbau' ? 2.0 : 1.6))}g/Tag`;
+  }
+
+  const userPrompt = `Erstelle einen Ernährungsplan mit folgenden Vorgaben:
+- Fitnessziel: ${profile.goal}
+- Ernährungsweise: ${profile.diet}
+- Budget: ${profile.budget}
+- Personen: ${profile.persons}
+- Tage: ${profile.days}
+- Meal-Prep: ${profile.mealprep}
+- Einkaufsliste-Format: ${profile.shopformat}
+- Allergien: ${profile.allergies}
+- Abneigungen: ${profile.dislikes}${kcalInfo}
+
+Wichtig:
+- Jeder Tag MUSS genau 2 Mahlzeiten haben: type "Mittag" UND type "Abend" — niemals nur eine!
+- Mind. 30g Eiweiß pro Mahlzeit
+- Günstige Eiweißquellen bevorzugen (Hülsenfrüchte, Eier, Magerquark, Hähnchen)
+- Saisonale Zutaten
+- Abwechslungsreiche Gerichte (Mittag und Abend unterschiedlich!)
+- Meal-Prep Gerichte entsprechend markieren
+- Alle Rezepte vollständig mit Schritt-für-Schritt-Anleitung`;
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': state.apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 8000,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userPrompt }]
+      })
+    });
+
+    clearInterval(stepInterval);
+
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.error?.message || 'API Fehler');
+    }
+
+    const data = await response.json();
+    let raw = data.content[0].text.trim();
+    raw = raw.replace(/^```json\s*/,'').replace(/^```\s*/,'').replace(/```\s*$/,'').trim();
+
+    const parsed = JSON.parse(raw);
+
+    state.plan = parsed.plan;
+    state.profile = profile;
+    state.shopping = buildShoppingState(parsed.shopping);
+
+    localStorage.setItem('nc_plan', JSON.stringify(state.plan));
+    localStorage.setItem('nc_profile', JSON.stringify(state.profile));
+    localStorage.setItem('nc_shopping', JSON.stringify(state.shopping));
+
+    // Auto-save recipes to library
+    autoSaveToLibrary(parsed.plan);
+
+    document.getElementById('mainNav').style.display = 'flex';
+    showTab('plan');
+    showToast('✅ Plan erfolgreich erstellt!');
+
+  } catch(e) {
+    clearInterval(stepInterval);
+    showView('onboarding');
+    document.getElementById('mainNav').style.display = 'flex';
+    showToast('❌ Fehler: ' + e.message);
+    console.error(e);
+  }
+}
+
+function buildShoppingState(shopping) {
+  const result = { byCategory: {}, byRecipe: [], estimatedCost: '', checked: {} };
+  if (shopping.byCategory) {
+    for (const [cat, items] of Object.entries(shopping.byCategory)) {
+      result.byCategory[cat] = items.map(i => ({ ...i, id: crypto.randomUUID() }));
+    }
+  }
+  result.byRecipe = shopping.byRecipe || [];
+  result.estimatedCost = shopping.estimatedCost || '';
+  return result;
+}
+
+// ── AUTO SAVE LIBRARY ──
+function autoSaveToLibrary(plan) {
+  const existing = new Set(state.library.map(r => r.name));
+  plan.forEach(day => {
+    day.meals.forEach(meal => {
+      if (!existing.has(meal.name)) {
+        state.library.push({
+          id: crypto.randomUUID(),
+          name: meal.name,
+          type: meal.type,
+          calories: meal.calories,
+          protein: meal.protein,
+          carbs: meal.carbs,
+          fat: meal.fat,
+          time: meal.time,
+          difficulty: meal.difficulty,
+          servings: meal.servings,
+          ingredients: meal.ingredients,
+          steps: meal.steps,
+          mealprepTip: meal.mealprepTip,
+          savedAt: new Date().toLocaleDateString('de-DE'),
+        });
+        existing.add(meal.name);
+      }
+    });
+  });
+  localStorage.setItem('nc_library', JSON.stringify(state.library));
+}
+
+// ── RENDER PLAN ──
+function renderPlan() {
+  if (!state.plan) { showView('onboarding'); return; }
+  const profile = state.profile || {};
+  document.getElementById('planTitle').textContent = `Ernährungsplan — ${profile.days || ''}  Tage`;
+  const bodyInfo = profile.weight && profile.height ? ` · ${profile.weight}kg / ${profile.height}cm` : '';
+  const trainingInfo = profile.training && profile.training !== '0' ? ` · 🏋️ +${profile.training} kcal Training` : '';
+  document.getElementById('planSubtitle').textContent =
+    `${profile.goal || ''} · ${profile.diet || ''} · ${profile.budget || ''} · ${profile.persons || 1} Person(en)${bodyInfo}${trainingInfo}`;
+
+  const container = document.getElementById('planContent');
+  container.innerHTML = '';
+
+  state.plan.forEach((day, di) => {
+    const totalCal = day.meals.reduce((s,m) => s + (m.calories||0), 0);
+    const div = document.createElement('div');
+    div.className = 'day-card';
+    div.innerHTML = `
+      <div class="day-header" onclick="toggleDay(${di})">
+        <div class="day-name">${day.day}</div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <div class="day-kcal">${totalCal} kcal gesamt</div>
+          <div class="day-toggle" id="toggle-${di}">▼</div>
+        </div>
+      </div>
+      <div class="day-body open" id="daybody-${di}">
+        ${day.meals.map((meal, mi) => `
+          <div class="meal-row">
+            <div class="meal-type">${meal.type}</div>
+            <div>
+              <div class="meal-name">${meal.name}</div>
+              <div class="macros-bar">
+                <span class="macro-chip"><span class="macro-dot" style="background:var(--protein)"></span>${meal.protein}g Eiweiß</span>
+                <span class="macro-chip"><span class="macro-dot" style="background:var(--carbs)"></span>${meal.carbs}g KH</span>
+                <span class="macro-chip"><span class="macro-dot" style="background:var(--fat)"></span>${meal.fat}g Fett</span>
+                <span class="macro-chip">🔥 ${meal.calories} kcal</span>
+                <span class="macro-chip">⏱ ${meal.time} min</span>
+              </div>
+              <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">
+                <span class="meal-badge">${meal.difficulty}</span>
+                ${meal.mealprep ? '<span class="meal-badge mealprep">🍱 Meal-Prep</span>' : ''}
+              </div>
+            </div>
+            <div class="meal-actions">
+              <button class="btn-meal" onclick="openRecipe(${di},${mi})">📋 Rezept</button>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+    container.appendChild(div);
+  });
+}
+
+function toggleDay(di) {
+  const body = document.getElementById('daybody-'+di);
+  const toggle = document.getElementById('toggle-'+di);
+  body.classList.toggle('open');
+  toggle.classList.toggle('open');
+}
+
+// ── RENDER NUTRIENTS ──
+function renderNutrients() {
+  if (!state.plan) { document.getElementById('nutrientsContent').innerHTML = '<div class="empty-state"><div class="empty-icon">📊</div><div class="empty-title">Noch kein Plan vorhanden</div></div>'; return; }
+  const container = document.getElementById('nutrientsContent');
+
+  let totalCal=0, totalP=0, totalC=0, totalF=0;
+
+  const cards = state.plan.map(day => {
+    const cal = day.meals.reduce((s,m)=>s+(m.calories||0),0);
+    const p = day.meals.reduce((s,m)=>s+(m.protein||0),0);
+    const c = day.meals.reduce((s,m)=>s+(m.carbs||0),0);
+    const f = day.meals.reduce((s,m)=>s+(m.fat||0),0);
+    totalCal+=cal; totalP+=p; totalC+=c; totalF+=f;
+    return `
+      <div class="nutrient-card">
+        <div class="nutrient-day">${day.day}</div>
+        <div class="nutrient-total">${cal} kcal</div>
+        <div class="nutrient-row"><span>Eiweiß</span><span class="nutrient-val nut-protein">${p}g</span></div>
+        <div class="nutrient-row"><span>Kohlenhydrate</span><span class="nutrient-val nut-carbs">${c}g</span></div>
+        <div class="nutrient-row"><span>Fett</span><span class="nutrient-val nut-fat">${f}g</span></div>
+      </div>`;
+  }).join('');
+
+  const avg = state.plan.length;
+
+  container.innerHTML = `
+    <div class="card" style="margin-bottom:20px">
+      <div class="card-title" style="margin-bottom:12px">Gesamtübersicht (${avg} Tage)</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px">
+        <div class="macro-box"><div class="macro-box-val">${totalCal}</div><div class="macro-box-label">kcal gesamt</div></div>
+        <div class="macro-box"><div class="macro-box-val" style="color:var(--protein)">${totalP}g</div><div class="macro-box-label">Eiweiß gesamt</div></div>
+        <div class="macro-box"><div class="macro-box-val" style="color:var(--carbs)">${totalC}g</div><div class="macro-box-label">Kohlenhydrate</div></div>
+        <div class="macro-box"><div class="macro-box-val" style="color:var(--fat)">${totalF}g</div><div class="macro-box-label">Fett gesamt</div></div>
+        <div class="macro-box"><div class="macro-box-val">${Math.round(totalCal/avg)}</div><div class="macro-box-label">kcal / Tag</div></div>
+        <div class="macro-box"><div class="macro-box-val" style="color:var(--protein)">${Math.round(totalP/avg)}g</div><div class="macro-box-label">Eiweiß / Tag</div></div>
+      </div>
+    </div>
+    <div class="nutrients-grid">${cards}</div>`;
+}
+
+// ── RENDER SHOPPING ──
+function renderShopping() {
+  const container = document.getElementById('shoppingContent');
+  if (!state.shopping || (!Object.keys(state.shopping.byCategory||{}).length && !(state.shopping.byRecipe||[]).length)) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-icon">🛒</div><div class="empty-title">Noch keine Einkaufsliste</div><div class="empty-sub">Erstelle zuerst einen Plan</div></div>';
+    return;
+  }
+
+  const profile = state.profile || {};
+  const fmt = profile.shopformat || 'Beides';
+  let html = '';
+
+  if (state.shopping.estimatedCost) {
+    html += `<div class="card" style="margin-bottom:16px;display:flex;justify-content:space-between;align-items:center">
+      <span style="color:var(--text2);font-size:0.88rem">Geschätzte Gesamtkosten</span>
+      <span style="font-size:1.2rem;font-weight:700;color:var(--accent)">${state.shopping.estimatedCost}</span>
+    </div>`;
+  }
+
+  if (fmt === 'Kategorien' || fmt === 'Beides') {
+    html += `<div class="card"><div class="card-title" style="margin-bottom:16px">📦 Nach Kategorien</div>`;
+    for (const [cat, items] of Object.entries(state.shopping.byCategory || {})) {
+      if (!items.length) continue;
+      html += `<div class="shop-category"><div class="shop-cat-title">${cat}</div>`;
+      items.forEach(item => {
+        const checked = state.shopping.checked?.[item.id] ? 'checked' : '';
+        html += `
+          <div class="shop-item ${checked}" onclick="toggleItem('${item.id}')" id="item-${item.id}">
+            <div class="shop-checkbox"></div>
+            <div class="shop-item-name">${item.name}</div>
+            <div class="shop-item-amount">${item.amount}</div>
+          </div>`;
+      });
+      html += `</div>`;
+    }
+    html += `</div>`;
+  }
+
+  if (fmt === 'Rezept' || fmt === 'Beides') {
+    html += `<div class="card" style="margin-top:16px"><div class="card-title" style="margin-bottom:16px">📋 Nach Rezept</div>`;
+    (state.shopping.byRecipe || []).forEach(r => {
+      html += `<div class="shop-category"><div class="shop-cat-title">${r.recipe}</div>`;
+      r.items.forEach(item => {
+        html += `<div class="shop-item"><div class="shop-item-name">${item.name}</div><div class="shop-item-amount">${item.amount}</div></div>`;
+      });
+      html += `</div>`;
+    });
+    html += `</div>`;
+  }
+
+  container.innerHTML = html;
+}
+
+function toggleItem(id) {
+  if (!state.shopping.checked) state.shopping.checked = {};
+  state.shopping.checked[id] = !state.shopping.checked[id];
+  localStorage.setItem('nc_shopping', JSON.stringify(state.shopping));
+  const el = document.getElementById('item-'+id);
+  if (el) el.classList.toggle('checked', state.shopping.checked[id]);
+}
+
+function clearCheckedItems() {
+  if (!state.shopping.checked) return;
+  const checkedIds = Object.entries(state.shopping.checked).filter(([,v])=>v).map(([k])=>k);
+  for (const [cat, items] of Object.entries(state.shopping.byCategory || {})) {
+    state.shopping.byCategory[cat] = items.filter(i => !checkedIds.includes(i.id));
+  }
+  checkedIds.forEach(id => delete state.shopping.checked[id]);
+  localStorage.setItem('nc_shopping', JSON.stringify(state.shopping));
+  renderShopping();
+  showToast('🗑 Abgehakte Artikel entfernt');
+}
+
+function clearAllItems() {
+  if (!confirm('Gesamte Einkaufsliste löschen?')) return;
+  state.shopping = {};
+  localStorage.setItem('nc_shopping', JSON.stringify(state.shopping));
+  renderShopping();
+  showToast('✅ Einkaufsliste geleert');
+}
+
+// ── RENDER MEALPREP ──
+function renderMealprep() {
+  if (!state.plan) { document.getElementById('mealprepContent').innerHTML = '<div class="empty-state"><div class="empty-icon">🍱</div><div class="empty-title">Noch kein Plan vorhanden</div></div>'; return; }
+
+  const mpMeals = [];
+  state.plan.forEach(day => {
+    day.meals.forEach(meal => {
+      if (meal.mealprep) mpMeals.push({ ...meal, day: day.day });
+    });
+  });
+
+  if (!mpMeals.length) {
+    document.getElementById('mealprepContent').innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">🍱</div>
+        <div class="empty-title">Keine Meal-Prep Gerichte im Plan</div>
+        <div class="empty-sub">Erstelle einen neuen Plan mit aktiviertem Meal-Prep</div>
+      </div>`;
+    return;
+  }
+
+  const html = `
+    <div class="card" style="margin-bottom:20px">
+      <div class="card-title" style="margin-bottom:4px">Meal-Prep Gerichte (${mpMeals.length})</div>
+      <div style="font-size:0.82rem;color:var(--text3)">Diese Gerichte eignen sich zum Vorkochen</div>
+    </div>
+    <div class="mealprep-grid">
+      ${mpMeals.map((meal,i) => `
+        <div class="mealprep-card">
+          <div class="mealprep-name">${meal.name}</div>
+          <div class="mealprep-meta">${meal.day} · ${meal.type} · ⏱ ${meal.time} min</div>
+          <div class="macros-bar" style="margin-bottom:10px">
+            <span class="macro-chip"><span class="macro-dot" style="background:var(--protein)"></span>${meal.protein}g</span>
+            <span class="macro-chip">🔥 ${meal.calories} kcal</span>
+          </div>
+          ${meal.mealprepTip ? `<div class="mealprep-tip">💡 ${meal.mealprepTip}</div>` : ''}
+          <div style="margin-top:12px">
+            <button class="btn-outline btn-sm" onclick="openMealRecipeFromMP(${i}, ${JSON.stringify(mpMeals).split('').map(c=>c==="'"?"\\'":c).join('')})">📋 Rezept</button>
+          </div>
+        </div>`).join('')}
+    </div>`;
+  document.getElementById('mealprepContent').innerHTML = html;
+}
+
+// ── RENDER LIBRARY ──
+function renderLibrary() {
+  const container = document.getElementById('libraryContent');
+  const count = state.library.length;
+  const countEl = document.getElementById('libCount');
+  if (countEl) countEl.textContent = count + ' Rezepte gespeichert';
+
+  if (!count) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">📚</div>
+        <div class="empty-title">Bibliothek ist leer</div>
+        <div class="empty-sub">Rezepte werden automatisch beim Erstellen eines Plans gespeichert</div>
+      </div>`;
+    return;
+  }
+
+  const html = `<div class="lib-grid">
+    ${state.library.map((r,i) => `
+      <div class="lib-card">
+        <div class="lib-card-name">${r.name}</div>
+        <div class="lib-card-meta">${r.type} · ⏱ ${r.time} min · ${r.difficulty} · ${r.savedAt}</div>
+        <div class="lib-card-macros">
+          <span class="lib-macro" style="color:var(--protein)">${r.protein}g Eiweiß</span>
+          <span class="lib-macro">🔥 ${r.calories} kcal</span>
+        </div>
+        <div class="lib-card-actions">
+          <button class="btn-outline btn-sm" onclick="openLibRecipe(${i})">📋 Rezept</button>
+          <button class="btn-danger" onclick="deleteLibRecipe(${i})">🗑</button>
+        </div>
+      </div>`).join('')}
+  </div>`;
+  container.innerHTML = html;
+}
+
+function deleteLibRecipe(i) {
+  if (!confirm(`"${state.library[i].name}" aus Bibliothek löschen?`)) return;
+  state.library.splice(i, 1);
+  localStorage.setItem('nc_library', JSON.stringify(state.library));
+  renderLibrary();
+  showToast('🗑 Rezept gelöscht');
+}
+
+// ── RECIPE MODAL ──
+function openRecipe(di, mi) {
+  const meal = state.plan[di].meals[mi];
+  showRecipeModal(meal);
+}
+
+function openLibRecipe(i) {
+  showRecipeModal(state.library[i]);
+}
+
+function openMealRecipeFromMP(i, mealsJson) {
+  try {
+    const meals = JSON.parse(mealsJson);
+    showRecipeModal(meals[i]);
+  } catch(e) { showToast('Fehler beim Laden'); }
+}
+
+function showRecipeModal(meal) {
+  document.getElementById('modalTitle').textContent = meal.name;
+  document.getElementById('modalBody').innerHTML = `
+    <div class="recipe-meta-row">
+      <span class="recipe-badge">🍽 ${meal.type}</span>
+      <span class="recipe-badge">⏱ ${meal.time} min</span>
+      <span class="recipe-badge">📊 ${meal.difficulty}</span>
+      <span class="recipe-badge">👥 ${meal.servings} Portionen</span>
+      ${meal.mealprep ? '<span class="recipe-badge" style="border-color:var(--accent);color:var(--accent)">🍱 Meal-Prep</span>' : ''}
+    </div>
+    <div class="macros-grid">
+      <div class="macro-box"><div class="macro-box-val">🔥 ${meal.calories}</div><div class="macro-box-label">kcal</div></div>
+      <div class="macro-box"><div class="macro-box-val" style="color:var(--protein)">${meal.protein}g</div><div class="macro-box-label">Eiweiß</div></div>
+      <div class="macro-box"><div class="macro-box-val" style="color:var(--carbs)">${meal.carbs}g</div><div class="macro-box-label">Kohlenhydrate</div></div>
+      <div class="macro-box"><div class="macro-box-val" style="color:var(--fat)">${meal.fat}g</div><div class="macro-box-label">Fett</div></div>
+    </div>
+    <div class="recipe-section-title">🥦 Zutaten</div>
+    <ul class="ingredient-list">
+      ${(meal.ingredients||[]).map(ing => `
+        <li>
+          <span>${ing.name}</span>
+          <span style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
+            <span>${ing.amount}</span>
+            ${ing.alt ? `<span class="ingredient-alt">Alt: ${ing.alt}</span>` : ''}
+          </span>
+        </li>`).join('')}
+    </ul>
+    <div class="recipe-section-title">👨‍🍳 Zubereitung</div>
+    <ol class="step-list">
+      ${(meal.steps||[]).map(step => `
+        <li class="step-item">
+          <div class="step-num"></div>
+          <div>${step}</div>
+        </li>`).join('')}
+    </ol>
+    ${meal.mealprepTip ? `
+      <div class="recipe-section-title">🍱 Meal-Prep Hinweise</div>
+      <div class="mealprep-hint">💡 ${meal.mealprepTip}</div>` : ''}
+  `;
+  document.getElementById('recipeModal').classList.add('open');
+}
+
+function closeModal(e) {
+  if (e.target.id === 'recipeModal') closeRecipeModal();
+}
+function closeRecipeModal() {
+  document.getElementById('recipeModal').classList.remove('open');
+}
+
+// ── POPULATE NEW FORM ──
+function populateNewForm() {
+  if (!state.profile) return;
+  const p = state.profile;
+  const set = (id, val) => { const el = document.getElementById(id); if(el) el.value = val; };
+  set('new-goal', p.goal);
+  set('new-diet', p.diet);
+  set('new-budget', p.budget);
+  set('new-persons', p.persons);
+  set('new-days', p.days);
+  set('new-mealprep', p.mealprep);
+  set('new-shopformat', p.shopformat);
+  set('new-allergies', p.allergies === 'keine' ? '' : p.allergies);
+  set('new-dislikes', p.dislikes === 'keine' ? '' : p.dislikes);
+  set('new-gender', p.gender);
+  set('new-age', p.age);
+  set('new-height', p.height);
+  set('new-weight', p.weight);
+  set('new-activity', p.activity);
+  set('new-training', p.training === '0' ? '' : p.training);
+}
+
+// ── SETTINGS ACTIONS ──
+function clearPlan() {
+  if (!confirm('Aktuellen Plan löschen?')) return;
+  state.plan = null;
+  localStorage.removeItem('nc_plan');
+  showView('onboarding');
+  showToast('✅ Plan gelöscht');
+}
+function clearLibrary() {
+  if (!confirm('Gesamte Rezeptbibliothek löschen?')) return;
+  state.library = [];
+  localStorage.setItem('nc_library', JSON.stringify([]));
+  showToast('✅ Bibliothek geleert');
+}
+function resetAll() {
+  if (!confirm('ALLE Daten löschen? (Plan, Einkaufsliste, Bibliothek, API-Key)')) return;
+  localStorage.clear();
+  location.reload();
+}
+
+// ── TOAST ──
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ── SERVICE WORKER ──
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
+
+// ── PWA INSTALL PROMPT ──
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  const btn = document.getElementById('installBtn');
+  if (btn) btn.style.display = 'flex';
+});
+window.addEventListener('appinstalled', () => {
+  deferredPrompt = null;
+  const btn = document.getElementById('installBtn');
+  if (btn) btn.style.display = 'none';
+  showToast('✅ NutriCoach installiert!');
+});
+function installPWA() {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then(() => { deferredPrompt = null; });
+  } else {
+    showToast('💡 Im Browser: Menü → "App installieren" oder "Zum Startbildschirm"');
+  }
+}
+
+// ── START ──
+init();
+</script>
+</body>
+</html>
