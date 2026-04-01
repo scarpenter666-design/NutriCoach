@@ -416,6 +416,7 @@ select.input option { background:var(--bg3); }
   <button class="nav-btn" onclick="showTab('shopping')" id="tab-shopping">🛒 Einkaufsliste</button>
   <button class="nav-btn" onclick="showTab('mealprep')" id="tab-mealprep">🍱 Meal-Prep</button>
   <button class="nav-btn" onclick="showTab('library')" id="tab-library">📚 Rezeptbibliothek</button>
+  <button class="nav-btn" onclick="showTab('pantry')" id="tab-pantry">🏪 Vorrat</button>
   <button class="nav-btn" onclick="showTab('new')" id="tab-new">✨ Neuer Plan</button>
 </div>
 
@@ -732,6 +733,64 @@ select.input option { background:var(--bg3); }
     </div>
   </div>
 
+
+  <!-- ── PANTRY ── -->
+  <div id="view-pantry" style="display:none">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
+      <div>
+        <h2 style="font-size:1.4rem;color:var(--accent3)">🏪 Vorratsverwaltung</h2>
+        <div style="font-size:0.82rem;color:var(--text3);margin-top:4px">Wird beim nächsten Plan berücksichtigt</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn-outline btn-sm" onclick="addPantryItem()">+ Manuell hinzufügen</button>
+        <button class="btn-danger" onclick="clearPantry()">Vorrat leeren</button>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:16px" id="pantryStatsCard" style="display:none">
+      <div id="pantryStats"></div>
+    </div>
+    <div id="pantryContent"></div>
+    <!-- Manuell hinzufügen Modal -->
+    <div id="pantryAddForm" style="display:none">
+      <div class="card" style="margin-top:16px;border-color:var(--accent)">
+        <div class="card-title" style="margin-bottom:14px">➕ Artikel hinzufügen</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <div class="label">Artikel</div>
+            <input type="text" class="input" id="pantry-name" placeholder="z.B. Reis, Linsen, Haferflocken">
+          </div>
+          <div class="form-group">
+            <div class="label">Menge</div>
+            <input type="text" class="input" id="pantry-amount" placeholder="z.B. 500g, 1 Packung">
+          </div>
+          <div class="form-group">
+            <div class="label">Kategorie</div>
+            <select class="input" id="pantry-cat">
+              <option>Trockenwaren & Konserven</option>
+              <option>Gemüse & Obst</option>
+              <option>Fleisch & Fisch</option>
+              <option>Kühlregal</option>
+              <option>Tiefkühl</option>
+              <option>Gewürze & Sonstiges</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <div class="label">Haltbarkeit</div>
+            <select class="input" id="pantry-shelf">
+              <option value="lang">Lang (Monate) — Reis, Linsen, Nudeln</option>
+              <option value="mittel">Mittel (Wochen) — Kartoffeln, Zwiebeln</option>
+              <option value="kurz">Kurz (Tage) — Frisches</option>
+            </select>
+          </div>
+        </div>
+        <div style="margin-top:14px;display:flex;gap:8px">
+          <button class="btn btn-sm" onclick="savePantryItem()">✅ Speichern</button>
+          <button class="btn-outline btn-sm" onclick="document.getElementById('pantryAddForm').style.display='none'">Abbrechen</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ── SETTINGS ── -->
   <div id="view-settings" style="display:none">
     <h2 style="font-size:1.4rem;color:var(--accent3);margin-bottom:20px">⚙️ Einstellungen</h2>
@@ -752,6 +811,7 @@ select.input option { background:var(--bg3); }
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn-danger" onclick="clearPlan()">Plan löschen</button>
           <button class="btn-danger" onclick="clearLibrary()">Bibliothek löschen</button>
+          <button class="btn-danger" onclick="clearPantry()">Vorrat löschen</button>
           <button class="btn-danger" onclick="resetAll()">Alle Daten löschen</button>
         </div>
       </div>
@@ -782,6 +842,7 @@ let state = {
   profile: JSON.parse(localStorage.getItem('nc_profile') || 'null'),
   shopping: JSON.parse(localStorage.getItem('nc_shopping') || '{}'),
   library: JSON.parse(localStorage.getItem('nc_library') || '[]'),
+  pantry: JSON.parse(localStorage.getItem('nc_pantry') || '[]'),
 };
 
 // ── INIT ──
@@ -802,7 +863,7 @@ function init() {
 }
 
 // ── VIEWS ──
-const VIEWS = ['setup','onboarding','loading','plan','nutrients','shopping','mealprep','library','new','settings'];
+const VIEWS = ['setup','onboarding','loading','plan','nutrients','shopping','mealprep','library','pantry','new','settings'];
 function showView(name) {
   VIEWS.forEach(v => {
     const el = document.getElementById('view-'+v);
@@ -820,6 +881,7 @@ function showTab(tab) {
   else if (tab === 'shopping') { showView('shopping'); renderShopping(); }
   else if (tab === 'mealprep') { showView('mealprep'); renderMealprep(); }
   else if (tab === 'library') { showView('library'); renderLibrary(); }
+  else if (tab === 'pantry') { showView('pantry'); renderPantry(); }
   else if (tab === 'new') { showView('new'); populateNewForm(); }
   else if (tab === 'settings') { showView('settings'); }
 }
@@ -986,6 +1048,12 @@ Das JSON-Objekt muss exakt folgende Struktur haben:
 - Proteinziel: ca. ${Math.round(w * (profile.goal === 'Muskelaufbau' ? 2.0 : 1.6))}g/Tag`;
   }
 
+  // Vorrat-Info für Prompt aufbauen
+  const pantryInfo = state.pantry.length > 0
+    ? '\n- Bereits im Vorrat (bitte in Planung berücksichtigen, Einkaufsliste entsprechend reduzieren): ' +
+      state.pantry.map(p => `${p.name} (${p.amount})`).join(', ')
+    : '';
+
   const userPrompt = `Erstelle einen Ernährungsplan mit folgenden Vorgaben:
 - Fitnessziel: ${profile.goal}
 - Ernährungsweise: ${profile.diet}
@@ -995,7 +1063,7 @@ Das JSON-Objekt muss exakt folgende Struktur haben:
 - Meal-Prep: ${profile.mealprep}
 - Einkaufsliste-Format: ${profile.shopformat}
 - Allergien: ${profile.allergies}
-- Abneigungen: ${profile.dislikes}${kcalInfo}
+- Abneigungen: ${profile.dislikes}${kcalInfo}${pantryInfo}
 
 Wichtig:
 - Jeder Tag MUSS genau 2 Mahlzeiten haben: type "Mittag" UND type "Abend" — niemals nur eine!
@@ -1046,6 +1114,8 @@ Wichtig:
 
     // Auto-save recipes to library
     autoSaveToLibrary(parsed.plan);
+    // Auto-schätze Vorrat aus Einkaufsliste
+    autoEstimatePantry(parsed.shopping);
 
     document.getElementById('mainNav').style.display = 'flex';
     showTab('plan');
@@ -1070,6 +1140,141 @@ function buildShoppingState(shopping) {
   result.byRecipe = shopping.byRecipe || [];
   result.estimatedCost = shopping.estimatedCost || '';
   return result;
+}
+
+
+// ── PANTRY (VORRAT) ──
+const PANTRY_STAPLES = [
+  'reis','linsen','kichererbsen','bohnen','erbsen','nudeln','spaghetti','haferflocken',
+  'mehl','zucker','salz','öl','olivenöl','essig','tomaten','dosentomaten','kokosmilch',
+  'quinoa','bulgur','couscous','dinkel','graupen','sonnenblumenkerne','kürbiskerne',
+  'mandeln','nüsse','rosinen','honig','senf','sojasoße','worcester','gewürze','brühe',
+  'tomatenmark','passata','linsen','roten linsen','gelben linsen'
+];
+
+function autoEstimatePantry(shopping) {
+  const allItems = [];
+  if (shopping.byCategory) {
+    Object.values(shopping.byCategory).forEach(items => allItems.push(...(items||[])));
+  }
+  const existingNames = new Set(state.pantry.map(p => p.name.toLowerCase()));
+  let added = 0;
+  allItems.forEach(item => {
+    const nameLow = (item.name||'').toLowerCase();
+    const isStaple = PANTRY_STAPLES.some(s => nameLow.includes(s));
+    if (isStaple && !existingNames.has(nameLow)) {
+      state.pantry.push({
+        id: crypto.randomUUID(),
+        name: item.name,
+        amount: item.amount || 'vorhanden',
+        category: 'Trockenwaren & Konserven',
+        shelf: 'lang',
+        addedAt: new Date().toLocaleDateString('de-DE'),
+        auto: true,
+      });
+      existingNames.add(nameLow);
+      added++;
+    }
+  });
+  if (added > 0) {
+    localStorage.setItem('nc_pantry', JSON.stringify(state.pantry));
+    showToast(`🏪 ${added} Artikel automatisch in den Vorrat aufgenommen`);
+  }
+}
+
+function renderPantry() {
+  const container = document.getElementById('pantryContent');
+  if (!state.pantry.length) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">🏪</div>
+        <div class="empty-title">Noch nichts im Vorrat</div>
+        <div class="empty-sub">Beim nächsten Plan werden Grundzutaten automatisch erkannt und hier gespeichert</div>
+      </div>`;
+    return;
+  }
+  // Nach Kategorie gruppieren
+  const grouped = {};
+  state.pantry.forEach(item => {
+    const cat = item.category || 'Sonstiges';
+    if (!grouped[cat]) grouped[cat] = [];
+    grouped[cat].push(item);
+  });
+  const shelfIcon = { lang: '🟢', mittel: '🟡', kurz: '🔴' };
+  let html = '';
+  for (const [cat, items] of Object.entries(grouped)) {
+    html += `<div class="card" style="margin-bottom:12px">
+      <div class="shop-cat-title" style="margin-bottom:12px">${cat} (${items.length})</div>`;
+    items.forEach(item => {
+      html += `
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(42,61,42,0.4)">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:1rem">${shelfIcon[item.shelf]||'⚪'}</span>
+            <div>
+              <div style="font-size:0.9rem;font-weight:500">${item.name}</div>
+              <div style="font-size:0.75rem;color:var(--text3)">${item.amount} · ${item.auto ? 'Auto' : 'Manuell'} · ${item.addedAt}</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:6px;align-items:center">
+            <input type="text" value="${item.amount}" 
+              style="width:90px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:4px 8px;font-size:0.78rem;font-family:inherit"
+              onchange="updatePantryAmount('${item.id}', this.value)">
+            <button class="btn-danger" style="padding:5px 9px;font-size:0.75rem" onclick="removePantryItem('${item.id}')">✕</button>
+          </div>
+        </div>`;
+    });
+    html += `</div>`;
+  }
+  container.innerHTML = html;
+}
+
+function addPantryItem() {
+  document.getElementById('pantryAddForm').style.display = 'block';
+  document.getElementById('pantry-name').focus();
+}
+
+function savePantryItem() {
+  const name = document.getElementById('pantry-name').value.trim();
+  const amount = document.getElementById('pantry-amount').value.trim();
+  if (!name) { showToast('❌ Bitte Artikel eingeben'); return; }
+  state.pantry.push({
+    id: crypto.randomUUID(),
+    name,
+    amount: amount || 'vorhanden',
+    category: document.getElementById('pantry-cat').value,
+    shelf: document.getElementById('pantry-shelf').value,
+    addedAt: new Date().toLocaleDateString('de-DE'),
+    auto: false,
+  });
+  localStorage.setItem('nc_pantry', JSON.stringify(state.pantry));
+  document.getElementById('pantryAddForm').style.display = 'none';
+  document.getElementById('pantry-name').value = '';
+  document.getElementById('pantry-amount').value = '';
+  renderPantry();
+  showToast('✅ Artikel zum Vorrat hinzugefügt');
+}
+
+function removePantryItem(id) {
+  state.pantry = state.pantry.filter(p => p.id !== id);
+  localStorage.setItem('nc_pantry', JSON.stringify(state.pantry));
+  renderPantry();
+  showToast('🗑 Artikel entfernt');
+}
+
+function updatePantryAmount(id, val) {
+  const item = state.pantry.find(p => p.id === id);
+  if (item) {
+    item.amount = val;
+    localStorage.setItem('nc_pantry', JSON.stringify(state.pantry));
+  }
+}
+
+function clearPantry() {
+  if (!confirm('Gesamten Vorrat löschen?')) return;
+  state.pantry = [];
+  localStorage.setItem('nc_pantry', JSON.stringify([]));
+  renderPantry();
+  showToast('✅ Vorrat geleert');
 }
 
 // ── AUTO SAVE LIBRARY ──
