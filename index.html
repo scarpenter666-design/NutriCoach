@@ -417,6 +417,7 @@ select.input option { background:var(--bg3); }
   <button class="nav-btn" onclick="showTab('mealprep')" id="tab-mealprep">🍱 Meal-Prep</button>
   <button class="nav-btn" onclick="showTab('library')" id="tab-library">📚 Rezeptbibliothek</button>
   <button class="nav-btn" onclick="showTab('pantry')" id="tab-pantry">🏪 Vorrat</button>
+  <button class="nav-btn" onclick="showTab('receipts')" id="tab-receipts">🧾 Ausgaben</button>
   <button class="nav-btn" onclick="showTab('new')" id="tab-new">✨ Neuer Plan</button>
 </div>
 
@@ -791,6 +792,33 @@ select.input option { background:var(--bg3); }
     </div>
   </div>
 
+  <!-- ── RECEIPTS ── -->
+  <div id="view-receipts" style="display:none">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
+      <div>
+        <h2 style="font-size:1.4rem;color:var(--accent3)">🧾 Ausgaben & Kassenzettel</h2>
+        <div style="font-size:0.82rem;color:var(--text3);margin-top:4px" id="receiptSubtitle">Fotos scannen, Preise tracken, Veränderungen erkennen</div>
+      </div>
+      <button class="btn btn-sm" onclick="document.getElementById('receiptUpload').click()">📷 Kassenzettel scannen</button>
+      <input type="file" id="receiptUpload" accept="image/*" style="display:none" onchange="scanReceipt(event)">
+    </div>
+
+    <!-- Statistik-Karten -->
+    <div id="receiptStats" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:20px"></div>
+
+    <!-- Preisalarm-Banner -->
+    <div id="priceAlerts" style="margin-bottom:16px"></div>
+
+    <!-- Scan-Loading -->
+    <div id="scanLoading" style="display:none" class="card" style="text-align:center;padding:40px">
+      <div class="spinner" style="margin:0 auto 16px"></div>
+      <div style="color:var(--text2);font-size:0.9rem">Kassenzettel wird analysiert...</div>
+    </div>
+
+    <!-- Kassenzettel-Liste -->
+    <div id="receiptsContent"></div>
+  </div>
+
   <!-- ── SETTINGS ── -->
   <div id="view-settings" style="display:none">
     <h2 style="font-size:1.4rem;color:var(--accent3);margin-bottom:20px">⚙️ Einstellungen</h2>
@@ -812,6 +840,7 @@ select.input option { background:var(--bg3); }
           <button class="btn-danger" onclick="clearPlan()">Plan löschen</button>
           <button class="btn-danger" onclick="clearLibrary()">Bibliothek löschen</button>
           <button class="btn-danger" onclick="clearPantry()">Vorrat löschen</button>
+          <button class="btn-danger" onclick="clearReceipts()">Ausgaben löschen</button>
           <button class="btn-danger" onclick="resetAll()">Alle Daten löschen</button>
         </div>
       </div>
@@ -837,17 +866,24 @@ select.input option { background:var(--bg3); }
 <script>
 // ── STATE ──
 let state = {
-  apiKey: localStorage.getItem('nc_apikey') || '',
+  apiKey: localStorage.getItem('nc_apikey') || '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',
   plan: JSON.parse(localStorage.getItem('nc_plan') || 'null'),
   profile: JSON.parse(localStorage.getItem('nc_profile') || 'null'),
   shopping: JSON.parse(localStorage.getItem('nc_shopping') || '{}'),
   library: JSON.parse(localStorage.getItem('nc_library') || '[]'),
   pantry: JSON.parse(localStorage.getItem('nc_pantry') || '[]'),
+  receipts: JSON.parse(localStorage.getItem('nc_receipts') || '[]'),
 };
 
 // ── INIT ──
 function init() {
-  if (!state.apiKey) {
+  // API-Key aus Konstante in localStorage übernehmen falls noch nicht gesetzt
+  const HARDCODED_KEY = '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';
+  if (HARDCODED_KEY && !localStorage.getItem('nc_apikey')) {
+    state.apiKey = HARDCODED_KEY;
+    localStorage.setItem('nc_apikey', HARDCODED_KEY);
+  }
+  if (!state.apiKey || state.apiKey === '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') {
     showView('setup');
   } else if (!state.plan) {
     showView('onboarding');
@@ -863,7 +899,7 @@ function init() {
 }
 
 // ── VIEWS ──
-const VIEWS = ['setup','onboarding','loading','plan','nutrients','shopping','mealprep','library','pantry','new','settings'];
+const VIEWS = ['setup','onboarding','loading','plan','nutrients','shopping','mealprep','library','pantry','receipts','new','settings'];
 function showView(name) {
   VIEWS.forEach(v => {
     const el = document.getElementById('view-'+v);
@@ -882,6 +918,7 @@ function showTab(tab) {
   else if (tab === 'mealprep') { showView('mealprep'); renderMealprep(); }
   else if (tab === 'library') { showView('library'); renderLibrary(); }
   else if (tab === 'pantry') { showView('pantry'); renderPantry(); }
+  else if (tab === 'receipts') { showView('receipts'); renderReceipts(); }
   else if (tab === 'new') { showView('new'); populateNewForm(); }
   else if (tab === 'settings') { showView('settings'); }
 }
@@ -1717,6 +1754,244 @@ function installPWA() {
   } else {
     showToast('💡 Im Browser: Menü → "App installieren" oder "Zum Startbildschirm"');
   }
+}
+
+
+// ── RECEIPTS & AUSGABEN ──
+
+async function scanReceipt(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  event.target.value = '';
+
+  document.getElementById('scanLoading').style.display = 'block';
+  showTab('receipts');
+
+  try {
+    // Bild zu Base64
+    const base64 = await new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => res(r.result.split(',')[1]);
+      r.onerror = rej;
+      r.readAsDataURL(file);
+    });
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': state.apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 2000,
+        messages: [{
+          role: 'user',
+          content: [
+            {
+              type: 'image',
+              source: { type: 'base64', media_type: file.type || 'image/jpeg', data: base64 }
+            },
+            {
+              type: 'text',
+              text: `Analysiere diesen Kassenzettel und extrahiere alle Artikel mit Preisen.
+Antworte NUR mit einem JSON-Objekt, kein Text davor oder danach:
+{
+  "store": "Marktname (z.B. Rewe, Aldi, Lidl)",
+  "date": "Datum vom Bon (TT.MM.JJJJ oder leer)",
+  "total": 12.34,
+  "items": [
+    {"name": "Artikelname", "price": 1.99, "qty": 1, "unit": "Stück/kg/l/g"}
+  ]
+}
+Nur Lebensmittel-relevante Artikel. Pfand, Rabatte und Summen weglassen.`
+            }
+          ]
+        }]
+      })
+    });
+
+    if (!response.ok) throw new Error('API Fehler beim Scan');
+    const data = await response.json();
+    let raw = data.content[0].text.trim()
+      .replace(/^```json\s*/,'').replace(/^```\s*/,'').replace(/```\s*$/,'').trim();
+    const parsed = JSON.parse(raw);
+
+    // Kassenzettel speichern
+    const receipt = {
+      id: crypto.randomUUID(),
+      store: parsed.store || 'Unbekannt',
+      date: parsed.date || new Date().toLocaleDateString('de-DE'),
+      total: parsed.total || 0,
+      items: parsed.items || [],
+      scannedAt: new Date().toLocaleDateString('de-DE'),
+    };
+    state.receipts.unshift(receipt);
+    localStorage.setItem('nc_receipts', JSON.stringify(state.receipts));
+
+    document.getElementById('scanLoading').style.display = 'none';
+    renderReceipts();
+    checkPriceChanges(receipt);
+    showToast(`✅ ${receipt.items.length} Artikel aus ${receipt.store} gespeichert`);
+
+  } catch(e) {
+    document.getElementById('scanLoading').style.display = 'none';
+    showToast('❌ Scan fehlgeschlagen: ' + e.message);
+    console.error(e);
+  }
+}
+
+function checkPriceChanges(newReceipt) {
+  const alerts = [];
+  newReceipt.items.forEach(newItem => {
+    // Gleichen Artikel in früheren Zetteln suchen
+    for (const oldReceipt of state.receipts.slice(1)) {
+      const match = oldReceipt.items.find(i =>
+        i.name.toLowerCase() === newItem.name.toLowerCase()
+      );
+      if (match && match.price && newItem.price) {
+        const diff = newItem.price - match.price;
+        const pct = Math.round((diff / match.price) * 100);
+        if (Math.abs(pct) >= 5) { // nur wenn ≥5% Änderung
+          alerts.push({
+            name: newItem.name,
+            oldPrice: match.price,
+            newPrice: newItem.price,
+            pct,
+            store: newReceipt.store,
+            oldDate: oldReceipt.date,
+          });
+        }
+      }
+    }
+  });
+  if (alerts.length > 0) {
+    localStorage.setItem('nc_price_alerts', JSON.stringify(alerts));
+  }
+}
+
+function renderReceipts() {
+  // Statistiken berechnen
+  renderReceiptStats();
+  renderPriceAlerts();
+
+  const container = document.getElementById('receiptsContent');
+  if (!state.receipts.length) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">🧾</div>
+        <div class="empty-title">Noch keine Kassenbons</div>
+        <div class="empty-sub">Tippe auf "📷 Kassenzettel scannen" um loszulegen</div>
+      </div>`;
+    return;
+  }
+
+  container.innerHTML = state.receipts.map((r, ri) => `
+    <div class="card" style="margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+        <div>
+          <div style="font-weight:600;font-size:1rem">${r.store}</div>
+          <div style="font-size:0.78rem;color:var(--text3)">${r.date} · ${r.items.length} Artikel · gescannt ${r.scannedAt}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="font-size:1.3rem;font-weight:700;color:var(--accent)">${r.total.toFixed(2)}€</div>
+          <button class="btn-danger" style="padding:5px 9px;font-size:0.75rem" onclick="deleteReceipt('${r.id}')">🗑</button>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr auto;gap:0">
+        ${r.items.map(item => {
+          const priceChange = getPriceChange(item.name, r.id, item.price);
+          return `
+          <div style="display:contents">
+            <div style="padding:7px 0;border-bottom:1px solid rgba(42,61,42,0.4);font-size:0.85rem;color:var(--text2)">${item.name}${item.qty > 1 ? ` <span style="color:var(--text3)">×${item.qty}</span>` : ''}</div>
+            <div style="padding:7px 0;border-bottom:1px solid rgba(42,61,42,0.4);font-size:0.85rem;text-align:right;display:flex;align-items:center;gap:6px;justify-content:flex-end">
+              ${priceChange ? `<span style="font-size:0.7rem;padding:2px 6px;border-radius:4px;background:${priceChange.pct > 0 ? 'rgba(232,80,80,0.15)' : 'rgba(126,200,80,0.15)'};color:${priceChange.pct > 0 ? '#e85050' : 'var(--accent)'}">${priceChange.pct > 0 ? '▲' : '▼'} ${Math.abs(priceChange.pct)}%</span>` : ''}
+              <span style="font-weight:500">${item.price.toFixed(2)}€</span>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
+function getPriceChange(itemName, currentReceiptId, currentPrice) {
+  const currentIdx = state.receipts.findIndex(r => r.id === currentReceiptId);
+  for (let i = currentIdx + 1; i < state.receipts.length; i++) {
+    const match = state.receipts[i].items.find(i => i.name.toLowerCase() === itemName.toLowerCase());
+    if (match && match.price) {
+      const pct = Math.round(((currentPrice - match.price) / match.price) * 100);
+      if (Math.abs(pct) >= 5) return { pct, oldPrice: match.price };
+      return null;
+    }
+  }
+  return null;
+}
+
+function renderReceiptStats() {
+  const el = document.getElementById('receiptStats');
+  if (!state.receipts.length) { el.innerHTML = ''; return; }
+
+  const total = state.receipts.reduce((s, r) => s + (r.total || 0), 0);
+  const avg = total / state.receipts.length;
+  const thisMonth = state.receipts.filter(r => {
+    const parts = r.date.split('.');
+    const d = parts.length === 3 ? new Date(parts[2], parts[1]-1, parts[0]) : new Date();
+    const now = new Date();
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+  }).reduce((s, r) => s + (r.total || 0), 0);
+
+  // Teuerster Markt
+  const byStore = {};
+  state.receipts.forEach(r => { byStore[r.store] = (byStore[r.store]||0) + (r.total||0); });
+  const topStore = Object.entries(byStore).sort((a,b)=>b[1]-a[1])[0];
+
+  el.innerHTML = `
+    <div class="macro-box"><div class="macro-box-val" style="color:var(--accent)">${total.toFixed(2)}€</div><div class="macro-box-label">Gesamt ausgegeben</div></div>
+    <div class="macro-box"><div class="macro-box-val">${avg.toFixed(2)}€</div><div class="macro-box-label">Ø pro Einkauf</div></div>
+    <div class="macro-box"><div class="macro-box-val" style="color:var(--carbs)">${thisMonth.toFixed(2)}€</div><div class="macro-box-label">Diesen Monat</div></div>
+    <div class="macro-box"><div class="macro-box-val" style="font-size:0.9rem">${topStore ? topStore[0] : '—'}</div><div class="macro-box-label">Lieblings-Markt</div></div>
+    <div class="macro-box"><div class="macro-box-val">${state.receipts.length}</div><div class="macro-box-label">Bons gespeichert</div></div>
+  `;
+}
+
+function renderPriceAlerts() {
+  const alerts = JSON.parse(localStorage.getItem('nc_price_alerts') || '[]');
+  const el = document.getElementById('priceAlerts');
+  if (!alerts.length) { el.innerHTML = ''; return; }
+
+  el.innerHTML = `
+    <div class="card" style="border-color:${alerts.some(a=>a.pct>0)?'#e85050':'var(--accent)'};margin-bottom:4px">
+      <div style="font-weight:600;margin-bottom:10px;font-size:0.9rem">⚠️ Preisveränderungen erkannt</div>
+      ${alerts.map(a => `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(42,61,42,0.4);font-size:0.83rem">
+          <span style="color:var(--text2)">${a.name}</span>
+          <span style="display:flex;gap:8px;align-items:center">
+            <span style="color:var(--text3)">${a.oldPrice.toFixed(2)}€ → </span>
+            <span style="font-weight:600;color:${a.pct>0?'#e85050':'var(--accent)'}">${a.newPrice.toFixed(2)}€ (${a.pct>0?'+':''}${a.pct}%)</span>
+          </span>
+        </div>`).join('')}
+      <button class="btn-outline btn-sm" style="margin-top:10px" onclick="localStorage.removeItem('nc_price_alerts');renderPriceAlerts()">✓ Verstanden</button>
+    </div>`;
+}
+
+function deleteReceipt(id) {
+  if (!confirm('Kassenzettel löschen?')) return;
+  state.receipts = state.receipts.filter(r => r.id !== id);
+  localStorage.setItem('nc_receipts', JSON.stringify(state.receipts));
+  renderReceipts();
+  showToast('🗑 Kassenzettel gelöscht');
+}
+
+function clearReceipts() {
+  if (!confirm('Alle Kassenbons und Ausgaben löschen?')) return;
+  state.receipts = [];
+  localStorage.setItem('nc_receipts', JSON.stringify([]));
+  localStorage.removeItem('nc_price_alerts');
+  renderReceipts();
+  showToast('✅ Ausgaben geleert');
 }
 
 // ── START ──
