@@ -1,5 +1,5 @@
 // ── Version erhöhen = Update wird erkannt ──
-const VERSION = 'nutricoach-v5';
+const VERSION = 'nutricoach-v6';
 const ASSETS = ['./index.html', './manifest.json', './icon.svg'];
 
 self.addEventListener('install', e => {
