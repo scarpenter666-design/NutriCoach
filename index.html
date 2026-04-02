@@ -832,11 +832,18 @@ select.input option { background:var(--bg3); }
       <div class="settings-section">
         <div class="settings-title">API-Key</div>
         <div class="form-group">
-          <div class="label">Anthropic API-Key</div>
-          <input type="password" class="input" id="settings-apikey" placeholder="sk-ant-api03-...">
+          <div class="label">Neuen Anthropic API-Key eingeben</div>
+          <input type="text" class="input" id="settings-apikey" 
+            placeholder="sk-ant-api03-..."
+            autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+            style="font-size:0.75rem;letter-spacing:0.02em">
         </div>
-        <div style="margin-top:12px">
-          <button class="btn btn-sm" onclick="updateApiKey()">Speichern</button>
+        <div style="margin-top:8px;font-size:0.75rem;color:var(--text3)">
+          Aktueller Key: <span id="current-key-hint"></span>
+        </div>
+        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-sm" onclick="updateApiKey()">✅ Speichern</button>
+          <button class="btn-outline btn-sm" onclick="document.getElementById('settings-apikey').value=''">✕ Leeren</button>
         </div>
       </div>
       <hr class="divider">
@@ -894,8 +901,7 @@ function init() {
     showTab('plan');
     renderPlan();
   }
-  const skInput = document.getElementById('settings-apikey');
-  if (skInput && state.apiKey) skInput.value = state.apiKey;
+  updateKeyHint();
 }
 
 // ── VIEWS ──
@@ -935,10 +941,26 @@ function saveApiKey() {
 }
 function updateApiKey() {
   const key = document.getElementById('settings-apikey').value.trim();
-  if (!key) { showToast('❌ Kein Key eingegeben'); return; }
+  if (!key) { showToast('❌ Bitte Key eingeben'); return; }
+  if (!key.startsWith('sk-ant')) { showToast('❌ Ungültiger Key — muss mit sk-ant beginnen'); return; }
   state.apiKey = key;
   localStorage.setItem('nc_apikey', key);
-  showToast('✅ API-Key aktualisiert');
+  document.getElementById('settings-apikey').value = '';
+  updateKeyHint();
+  showToast('✅ API-Key gespeichert! Neuer Plan kann erstellt werden.');
+}
+
+function updateKeyHint() {
+  const el = document.getElementById('current-key-hint');
+  if (!el) return;
+  const key = state.apiKey || '';
+  if (key && key.startsWith('sk-ant')) {
+    el.textContent = key.substring(0, 12) + '...' + key.slice(-4);
+    el.style.color = 'var(--accent)';
+  } else {
+    el.textContent = 'Kein Key gesetzt';
+    el.style.color = '#e85050';
+  }
 }
 
 // ── GENERATE PLAN ──
