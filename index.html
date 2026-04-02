@@ -409,6 +409,13 @@ select.input option { background:var(--bg3); }
   </div>
 </div>
 
+<!-- UPDATE BANNER -->
+<div id="updateBanner" style="display:none;background:#7ec850;color:#0f1a0f;text-align:center;padding:12px 20px;font-size:0.88rem;font-weight:600;position:sticky;top:60px;z-index:99;display:flex;align-items:center;justify-content:center;gap:12px">
+  <span>🔄 Eine neue Version ist verfügbar!</span>
+  <button onclick="applyUpdate()" style="background:#0f1a0f;color:#7ec850;border:none;border-radius:6px;padding:6px 14px;font-size:0.82rem;font-weight:600;cursor:pointer;font-family:inherit">Jetzt aktualisieren</button>
+  <button onclick="document.getElementById('updateBanner').style.display='none'" style="background:rgba(0,0,0,0.15);color:#0f1a0f;border:none;border-radius:6px;padding:6px 10px;font-size:0.82rem;cursor:pointer;font-family:inherit">✕</button>
+</div>
+
 <!-- NAV -->
 <div class="nav" id="mainNav" style="display:none">
   <button class="nav-btn active" onclick="showTab('plan')" id="tab-plan">📅 Wochenplan</button>
@@ -1549,14 +1556,18 @@ function renderMealprep() {
       ${mpMeals.map((meal,i) => `
         <div class="mealprep-card">
           <div class="mealprep-name">${meal.name}</div>
-          <div class="mealprep-meta">${meal.day} · ${meal.type} · ⏱ ${meal.time} min</div>
+          <div class="mealprep-meta">${meal.type} · ⏱ ${meal.time} min</div>
           <div class="macros-bar" style="margin-bottom:10px">
             <span class="macro-chip"><span class="macro-dot" style="background:var(--protein)"></span>${meal.protein}g</span>
             <span class="macro-chip">🔥 ${meal.calories} kcal</span>
           </div>
           ${meal.mealprepTip ? `<div class="mealprep-tip">💡 ${meal.mealprepTip}</div>` : ''}
-          <div style="margin-top:12px">
-            <button class="btn-outline btn-sm" onclick="openMealRecipeFromMP(${i}, ${JSON.stringify(mpMeals).split('').map(c=>c==="'"?"\\'":c).join('')})">📋 Rezept</button>
+          <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn-outline btn-sm" onclick="openMealRecipeFromMP(${i})">📋 Rezept</button>
+            <button class="meal-badge mealprep" style="cursor:pointer;border:none" 
+              onclick="showToast('📅 ' + mpMeals[${i}].days.join(', '))">
+              📅 ${meal.days ? meal.days.length : 1} Tag(e)
+            </button>
           </div>
         </div>`).join('')}
     </div>`;
@@ -1616,9 +1627,15 @@ function openLibRecipe(i) {
   showRecipeModal(state.library[i]);
 }
 
-function openMealRecipeFromMP(i, mealsJson) {
+function openMealRecipeFromMP(i) {
   try {
-    const meals = JSON.parse(mealsJson);
+    const seen = {};
+    state.plan.forEach(day => {
+      day.meals.forEach(meal => {
+        if (meal.mealprep && !seen[meal.name]) seen[meal.name] = meal;
+      });
+    });
+    const meals = Object.values(seen);
     showRecipeModal(meals[i]);
   } catch(e) { showToast('Fehler beim Laden'); }
 }
@@ -1723,8 +1740,34 @@ function showToast(msg) {
 }
 
 // ── SERVICE WORKER ──
+let swRegistration = null;
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js').catch(()=>{});
+  navigator.serviceWorker.register('sw.js').then(reg => {
+    swRegistration = reg;
+    // Auf Updates prüfen
+    reg.addEventListener('updatefound', () => {
+      const newWorker = reg.installing;
+      newWorker.addEventListener('statechange', () => {
+        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+          // Neue Version verfügbar — Banner anzeigen
+          document.getElementById('updateBanner').style.display = 'flex';
+        }
+      });
+    });
+  }).catch(()=>{});
+
+  // Wenn SW übernimmt → Seite neu laden
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    window.location.reload();
+  });
+}
+
+function applyUpdate() {
+  if (swRegistration && swRegistration.waiting) {
+    swRegistration.waiting.postMessage({ type: 'SKIP_WAITING' });
+  } else {
+    window.location.reload();
+  }
 }
 
 // ── PWA INSTALL PROMPT ──
@@ -1786,7 +1829,7 @@ async function scanReceipt(event) {
           content: [
             {
               type: 'image',
-              source: { type: 'base64', media_type: file.type || 'image/jpeg', data: base64 }
+              source: { type: 'base64', media_type: file.type === 'image/webp' ? 'image/webp' : file.type === 'image/png' ? 'image/png' : 'image/jpeg', data: base64 }
             },
             {
               type: 'text',
@@ -1807,7 +1850,10 @@ Nur Lebensmittel-relevante Artikel. Pfand, Rabatte und Summen weglassen.`
       })
     });
 
-    if (!response.ok) throw new Error('API Fehler beim Scan');
+    if (!response.ok) {
+      const errData = await response.json().catch(()=>({}));
+      throw new Error(errData.error?.message || 'API Fehler beim Scan (Status: ' + response.status + ')');
+    }
     const data = await response.json();
     let raw = data.content[0].text.trim()
       .replace(/^```json\s*/,'').replace(/^```\s*/,'').replace(/```\s*$/,'').trim();

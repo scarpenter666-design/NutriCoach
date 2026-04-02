@@ -1,39 +1,47 @@
-const CACHE = 'nutricoach-v1';
-const ASSETS = [
-  './',
-  './index.html',
-  './manifest.json',
-  './icon.svg',
-];
+// ── Version erhöhen = Update wird erkannt ──
+const VERSION = 'nutricoach-v3';
+const ASSETS = ['./index.html', './manifest.json', './icon.svg'];
 
 self.addEventListener('install', e => {
   e.waitUntil(
-    caches.open(CACHE).then(cache => cache.addAll(ASSETS))
+    caches.open(VERSION).then(cache => cache.addAll(ASSETS))
   );
-  self.skipWaiting();
+  // NICHT skipWaiting — warten bis Nutzer bestätigt
 });
 
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
-    )
+      Promise.all(keys.filter(k => k !== VERSION).map(k => caches.delete(k)))
+    ).then(() => clients.claim())
   );
-  clients.claim();
 });
 
+// Nutzer bestätigt Update
+self.addEventListener('message', e => {
+  if (e.data && e.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
+
+// Network First — immer frische Version versuchen
 self.addEventListener('fetch', e => {
-  // API-Calls nie cachen
   if (e.request.url.includes('api.anthropic.com')) return;
   if (e.request.url.includes('fonts.googleapis.com')) return;
+  if (e.request.url.includes('fonts.gstatic.com')) return;
 
   e.respondWith(
-    caches.match(e.request).then(cached => {
-      return cached || fetch(e.request).then(response => {
-        const clone = response.clone();
-        caches.open(CACHE).then(cache => cache.put(e.request, clone));
+    fetch(e.request)
+      .then(response => {
+        if (response.ok) {
+          const clone = response.clone();
+          caches.open(VERSION).then(cache => cache.put(e.request, clone));
+        }
         return response;
-      });
-    }).catch(() => caches.match('./index.html'))
+      })
+      .catch(() => {
+        return caches.match(e.request)
+          .then(cached => cached || caches.match('./index.html'));
+      })
   );
 });
