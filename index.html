@@ -410,10 +410,9 @@ select.input option { background:var(--bg3); }
 </div>
 
 <!-- UPDATE BANNER -->
-<div id="updateBanner" style="display:none;background:#7ec850;color:#0f1a0f;text-align:center;padding:12px 20px;font-size:0.88rem;font-weight:600;position:sticky;top:60px;z-index:99;display:flex;align-items:center;justify-content:center;gap:12px">
+<div id="updateBanner" style="display:none;background:#7ec850;color:#0f1a0f;text-align:center;padding:12px 20px;font-size:0.88rem;font-weight:600;position:sticky;top:60px;z-index:99;align-items:center;justify-content:center;gap:12px">
   <span>🔄 Eine neue Version ist verfügbar!</span>
   <button onclick="applyUpdate()" style="background:#0f1a0f;color:#7ec850;border:none;border-radius:6px;padding:6px 14px;font-size:0.82rem;font-weight:600;cursor:pointer;font-family:inherit">Jetzt aktualisieren</button>
-  <button onclick="document.getElementById('updateBanner').style.display='none'" style="background:rgba(0,0,0,0.15);color:#0f1a0f;border:none;border-radius:6px;padding:6px 10px;font-size:0.82rem;cursor:pointer;font-family:inherit">✕</button>
 </div>
 
 <!-- NAV -->
@@ -1530,12 +1529,20 @@ function clearAllItems() {
 function renderMealprep() {
   if (!state.plan) { document.getElementById('mealprepContent').innerHTML = '<div class="empty-state"><div class="empty-icon">🍱</div><div class="empty-title">Noch kein Plan vorhanden</div></div>'; return; }
 
-  const mpMeals = [];
+  // Deduplizieren: jedes Gericht nur einmal, Tage sammeln
+  const seen = {};
   state.plan.forEach(day => {
     day.meals.forEach(meal => {
-      if (meal.mealprep) mpMeals.push({ ...meal, day: day.day });
+      if (meal.mealprep) {
+        if (!seen[meal.name]) {
+          seen[meal.name] = { ...meal, days: [day.day] };
+        } else {
+          seen[meal.name].days.push(day.day);
+        }
+      }
     });
   });
+  const mpMeals = Object.values(seen);
 
   if (!mpMeals.length) {
     document.getElementById('mealprepContent').innerHTML = `
@@ -1547,13 +1554,17 @@ function renderMealprep() {
     return;
   }
 
+  const mpJson = JSON.stringify(mpMeals).replace(/'/g, "\'");
   const html = `
     <div class="card" style="margin-bottom:20px">
       <div class="card-title" style="margin-bottom:4px">Meal-Prep Gerichte (${mpMeals.length})</div>
       <div style="font-size:0.82rem;color:var(--text3)">Diese Gerichte eignen sich zum Vorkochen</div>
     </div>
     <div class="mealprep-grid">
-      ${mpMeals.map((meal,i) => `
+      ${mpMeals.map((meal, i) => {
+        const daysLabel = meal.days.join(', ');
+        const daysCount = meal.days.length;
+        return `
         <div class="mealprep-card">
           <div class="mealprep-name">${meal.name}</div>
           <div class="mealprep-meta">${meal.type} · ⏱ ${meal.time} min</div>
@@ -1562,14 +1573,12 @@ function renderMealprep() {
             <span class="macro-chip">🔥 ${meal.calories} kcal</span>
           </div>
           ${meal.mealprepTip ? `<div class="mealprep-tip">💡 ${meal.mealprepTip}</div>` : ''}
-          <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+          <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
             <button class="btn-outline btn-sm" onclick="openMealRecipeFromMP(${i})">📋 Rezept</button>
-            <button class="meal-badge mealprep" style="cursor:pointer;border:none" 
-              onclick="showToast('📅 ' + mpMeals[${i}].days.join(', '))">
-              📅 ${meal.days ? meal.days.length : 1} Tag(e)
-            </button>
+            <span class="meal-badge mealprep" title="${daysLabel}">📅 ${daysCount} Tag(e): ${daysLabel}</span>
           </div>
-        </div>`).join('')}
+        </div>`;
+      }).join('')}
     </div>`;
   document.getElementById('mealprepContent').innerHTML = html;
 }
@@ -1852,7 +1861,21 @@ Nur Lebensmittel-relevante Artikel. Pfand, Rabatte und Summen weglassen.`
 
     if (!response.ok) {
       const errData = await response.json().catch(()=>({}));
-      throw new Error(errData.error?.message || 'API Fehler beim Scan (Status: ' + response.status + ')');
+      const errMsg = errData.error?.message || 'Status ' + response.status;
+      // Fehler direkt in der UI anzeigen
+      document.getElementById('scanLoading').style.display = 'none';
+      document.getElementById('receiptsContent').innerHTML = `
+        <div class="card" style="border-color:#e85050;margin-top:16px">
+          <div style="color:#e85050;font-weight:600;margin-bottom:8px">❌ Scan fehlgeschlagen</div>
+          <div style="font-size:0.85rem;color:var(--text2);margin-bottom:12px">${errMsg}</div>
+          <div style="font-size:0.8rem;color:var(--text3)">
+            Mögliche Ursachen:<br>
+            • Bild zu groß (max. 5MB)<br>
+            • Bildformat nicht unterstützt (bitte JPG/PNG verwenden)<br>
+            • API-Guthaben aufgebraucht
+          </div>
+        </div>`;
+      return;
     }
     const data = await response.json();
     let raw = data.content[0].text.trim()
