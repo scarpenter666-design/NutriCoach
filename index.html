@@ -866,7 +866,7 @@ select.input option { background:var(--bg3); }
 <script>
 // ── STATE ──
 let state = {
-  apiKey: localStorage.getItem('nc_apikey') || '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',
+  apiKey: localStorage.getItem('nc_apikey') || '',
   plan: JSON.parse(localStorage.getItem('nc_plan') || 'null'),
   profile: JSON.parse(localStorage.getItem('nc_profile') || 'null'),
   shopping: JSON.parse(localStorage.getItem('nc_shopping') || '{}'),
@@ -877,12 +877,9 @@ let state = {
 
 // ── INIT ──
 function init() {
-  // API-Key fest eingebaut
-  const HARDCODED_KEY = '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';
-  state.apiKey = HARDCODED_KEY;
-  localStorage.setItem('nc_apikey', HARDCODED_KEY);
-
-  if (!state.plan) {
+  if (!state.apiKey) {
+    showView('setup');
+  } else if (!state.plan) {
     showView('onboarding');
     document.getElementById('mainNav').style.display = 'flex';
   } else {
@@ -892,7 +889,7 @@ function init() {
     renderPlan();
   }
   const skInput = document.getElementById('settings-apikey');
-  if (skInput) skInput.value = HARDCODED_KEY;
+  if (skInput && state.apiKey) skInput.value = state.apiKey;
 }
 
 // ── VIEWS ──
