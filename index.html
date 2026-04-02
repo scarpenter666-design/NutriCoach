@@ -877,15 +877,12 @@ let state = {
 
 // ── INIT ──
 function init() {
-  // API-Key aus Konstante in localStorage übernehmen falls noch nicht gesetzt
+  // API-Key fest eingebaut
   const HARDCODED_KEY = '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';
-  if (HARDCODED_KEY && !localStorage.getItem('nc_apikey')) {
-    state.apiKey = HARDCODED_KEY;
-    localStorage.setItem('nc_apikey', HARDCODED_KEY);
-  }
-  if (!state.apiKey || state.apiKey === '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') {
-    showView('setup');
-  } else if (!state.plan) {
+  state.apiKey = HARDCODED_KEY;
+  localStorage.setItem('nc_apikey', HARDCODED_KEY);
+
+  if (!state.plan) {
     showView('onboarding');
     document.getElementById('mainNav').style.display = 'flex';
   } else {
@@ -895,7 +892,7 @@ function init() {
     renderPlan();
   }
   const skInput = document.getElementById('settings-apikey');
-  if (skInput && state.apiKey) skInput.value = state.apiKey;
+  if (skInput) skInput.value = HARDCODED_KEY;
 }
 
 // ── VIEWS ──
