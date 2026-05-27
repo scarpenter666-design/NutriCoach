@@ -1766,7 +1766,7 @@ function resetAll() {
 }
 
 // ── BACKUP / RESTORE ──
-function exportData() {
+async function exportData() {
   const data = {
     version: 1,
     exported: new Date().toISOString(),
@@ -1778,12 +1778,18 @@ function exportData() {
     nc_receipts: state.receipts,
     nc_price_alerts: JSON.parse(localStorage.getItem('nc_price_alerts') || '[]')
   };
-  const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+  const json = JSON.stringify(data, null, 2);
+  const filename = `nutricoach-backup-${new Date().toISOString().slice(0,10)}.json`;
+  const file = new File([json], filename, {type: 'application/json'});
+  if (navigator.share && navigator.canShare && navigator.canShare({files: [file]})) {
+    try { await navigator.share({files: [file], title: 'NutriCoach Backup'}); return; } catch {}
+  }
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `nutricoach-backup-${new Date().toISOString().slice(0,10)}.json`;
+  a.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(json);
+  a.download = filename;
+  document.body.appendChild(a);
   a.click();
-  URL.revokeObjectURL(a.href);
+  document.body.removeChild(a);
   showToast('✅ Backup heruntergeladen');
 }
 function importData(event) {
