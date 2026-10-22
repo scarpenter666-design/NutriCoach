@@ -511,6 +511,14 @@ select.input option { background:var(--bg3); }
           </select>
         </div>
         <div class="form-group">
+          <div class="label">Abendessen</div>
+          <select class="input" id="ob-dinner">
+            <option value="kalt">Kalt / schnell</option>
+            <option value="gemischt">Gemischt</option>
+            <option value="warm">Warm</option>
+          </select>
+        </div>
+        <div class="form-group">
           <div class="label">Einkaufsliste Format</div>
           <select class="input" id="ob-shopformat">
             <option value="Beides">Beides (Kategorien + nach Rezept)</option>
@@ -682,6 +690,14 @@ select.input option { background:var(--bg3); }
             <option value="Ja, für 3 Tage">Ja, 3 Tage</option>
             <option value="Ja, für 5 Tage">Ja, 5 Tage</option>
             <option value="Ja, für 7 Tage">Ja, 7 Tage</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <div class="label">Abendessen</div>
+          <select class="input" id="new-dinner">
+            <option value="kalt">Kalt / schnell</option>
+            <option value="gemischt">Gemischt</option>
+            <option value="warm">Warm</option>
           </select>
         </div>
         <div class="form-group">
@@ -1011,6 +1027,7 @@ async function generatePlan() {
     days: document.getElementById('ob-days').value,
     diet: document.getElementById('ob-diet').value,
     mealprep: document.getElementById('ob-mealprep').value,
+    dinner: document.getElementById('ob-dinner').value,
     shopformat: document.getElementById('ob-shopformat').value,
     allergies: document.getElementById('ob-allergies').value || 'keine',
     dislikes: document.getElementById('ob-dislikes').value || 'keine',
@@ -1032,6 +1049,7 @@ async function generateNewPlan() {
     days: document.getElementById('new-days').value,
     diet: document.getElementById('new-diet').value,
     mealprep: document.getElementById('new-mealprep').value,
+    dinner: document.getElementById('new-dinner').value,
     shopformat: document.getElementById('new-shopformat').value,
     allergies: document.getElementById('new-allergies').value || 'keine',
     dislikes: document.getElementById('new-dislikes').value || 'keine',
@@ -1043,6 +1061,50 @@ async function generateNewPlan() {
     training: document.getElementById('new-training').value || '0',
   };
   await callGeneratePlan(profile);
+}
+
+// ── ABWECHSLUNG: Verlauf + Küchen-Rotation ──
+const CUISINE_THEMES = [
+  'mediterran (italienisch, griechisch, spanisch)',
+  'asiatisch (thailändisch, japanisch, koreanisch, vietnamesisch)',
+  'deutsche & österreichische Hausmannskost, modern interpretiert',
+  'orientalisch & levantinisch (türkisch, libanesisch, persisch)',
+  'mexikanisch & lateinamerikanisch',
+  'indisch & südasiatisch',
+  'skandinavisch & osteuropäisch',
+  'französisch & Bistro-Küche',
+];
+
+// Letzte Gerichte (max. 3 Pläne) – Fallback auf Bibliothek für Altdaten
+function getRecentMealNames() {
+  const history = getStoredJson('nc_meal_history', []);
+  let names = history.slice(-3).flatMap(h => h.names || []);
+  if (names.length === 0) names = state.library.slice(-30).map(r => r.name);
+  return [...new Set(names)].slice(-40);
+}
+
+function recordMealHistory(plan) {
+  const names = [...new Set(plan.flatMap(d => (d.meals || []).map(m => m.name)))];
+  const history = getStoredJson('nc_meal_history', []);
+  history.push({ date: new Date().toISOString().slice(0, 10), names });
+  localStorage.setItem('nc_meal_history', JSON.stringify(history.slice(-6)));
+}
+
+// Pro Plan zwei Küchen-Schwerpunkte, rotierend
+function pickCuisineThemes() {
+  const idx = parseInt(localStorage.getItem('nc_cuisine_idx') || '0', 10) || 0;
+  localStorage.setItem('nc_cuisine_idx', String((idx + 2) % CUISINE_THEMES.length));
+  return [CUISINE_THEMES[idx % CUISINE_THEMES.length], CUISINE_THEMES[(idx + 1) % CUISINE_THEMES.length]];
+}
+
+function dinnerRule(dinner) {
+  if (dinner === 'warm') {
+    return '- Abendessen: warme Gerichte erlaubt, aber leichter und schneller als das Mittagessen (max. 25 Min. Zubereitung)';
+  }
+  if (dinner === 'gemischt') {
+    return '- Abendessen: an höchstens jedem zweiten Tag warm (dann leicht, max. 20 Min.); an den übrigen Tagen kalt (Brotzeit, Salat, Bowl, Wrap, Quark-/Joghurt-Gericht)';
+  }
+  return '- Abendessen: IMMER kalte oder kaum gekochte, schnelle Gerichte (max. 15 Min.), z.B. Vollkornbrot mit Belag, Salat mit Eiweißquelle, kalte Bowl, Wrap, Quark-/Joghurt-Gericht, Hüttenkäse-Teller. KEINE Aufläufe, Pfannengerichte, Eintöpfe, Pasta- oder Reisgerichte am Abend – die gehören zum Mittag.';
 }
 
 async function callGeneratePlan(profile) {
@@ -1088,29 +1150,29 @@ Das JSON-Objekt muss exakt folgende Struktur haben:
           "difficulty": "Einfach",
           "servings": 2,
           "ingredients": [
-            {"name": "Hähnchenbrust", "amount": "300g", "alt": "Putenbrust"},
-            {"name": "Reis", "amount": "200g", "alt": null}
+            {"name": "Zutat 1", "amount": "300g", "alt": "Alternative"},
+            {"name": "Zutat 2", "amount": "200g", "alt": null}
           ],
           "steps": [
-            "Hähnchenbrust würzen und in Stücke schneiden.",
-            "Reis in Salzwasser 18 Minuten kochen."
+            "Kurzer Zubereitungsschritt.",
+            "Kurzer Zubereitungsschritt."
           ],
-          "mealprepTip": "Hält 4 Tage im Kühlschrank. Sauce separat aufbewahren."
+          "mealprepTip": "Haltbarkeit und Lagerhinweis (oder null)"
         }
       ]
     }
   ],
   "shopping": {
     "byCategory": {
-      "Gemüse & Obst": [{"name": "Brokkoli", "amount": "500g"}],
-      "Fleisch & Fisch": [{"name": "Hähnchenbrust", "amount": "600g"}],
-      "Kühlregal": [{"name": "Magerquark", "amount": "500g"}],
+      "Gemüse & Obst": [{"name": "Zutat", "amount": "500g"}],
+      "Fleisch & Fisch": [],
+      "Kühlregal": [],
       "Tiefkühl": [],
-      "Trockenwaren & Konserven": [{"name": "Reis", "amount": "1kg"}],
-      "Gewürze & Sonstiges": [{"name": "Olivenöl", "amount": "1 Flasche"}]
+      "Trockenwaren & Konserven": [],
+      "Gewürze & Sonstiges": []
     },
     "byRecipe": [
-      {"recipe": "Gerichtname", "items": [{"name": "Hähnchenbrust", "amount": "300g"}]}
+      {"recipe": "Gerichtname", "items": [{"name": "Zutat 1", "amount": "300g"}]}
     ],
     "estimatedCost": "ca. 38€"
   }
@@ -1152,6 +1214,13 @@ Das JSON-Objekt muss exakt folgende Struktur haben:
       state.pantry.map(p => `${p.name} (${p.amount})`).join(', ')
     : '';
 
+  // Abwechslung: zuletzt vorgeschlagene Gerichte + Küchen-Schwerpunkte
+  const recentMeals = getRecentMealNames();
+  const recentInfo = recentMeals.length > 0
+    ? '\n- Diese Gerichte gab es zuletzt – NICHT wiederholen und auch keine Variante davon (gleiches Hauptgericht mit anderer Beilage oder anderem Gewürz zählt als Wiederholung): ' + recentMeals.join(', ')
+    : '';
+  const themes = pickCuisineThemes();
+
   const userPrompt = `Erstelle einen Ernährungsplan mit folgenden Vorgaben:
 - Fitnessziel: ${profile.goal}
 - Ernährungsweise: ${profile.diet}
@@ -1161,14 +1230,17 @@ Das JSON-Objekt muss exakt folgende Struktur haben:
 - Meal-Prep: ${profile.mealprep}
 - Einkaufsliste-Format: ${profile.shopformat}
 - Allergien: ${profile.allergies}
-- Abneigungen: ${profile.dislikes}${kcalInfo}${pantryInfo}
+- Abneigungen: ${profile.dislikes}${kcalInfo}${pantryInfo}${recentInfo}
 
 Wichtig:
 - Jeder Tag MUSS genau 2 Mahlzeiten haben: type "Mittag" UND type "Abend" — niemals nur eine!
-- Mind. 30g Eiweiß pro Mahlzeit
-- Günstige Eiweißquellen bevorzugen (Hülsenfrüchte, Eier, Magerquark, Hähnchen)
+- Mittagessen: die warme Hauptmahlzeit des Tages
+${dinnerRule(profile.dinner)}
+- Mind. 30g Eiweiß pro Mahlzeit (abends z.B. über Quark, Hüttenkäse, Eier, Thunfisch, Räucherlachs, Hähnchenaufschnitt, Tofu, Bohnen)
+- Eiweißquellen über die Woche variieren, nicht jeden Tag dieselbe; günstig bleiben
 - Saisonale Zutaten
-- Abwechslungsreiche Gerichte (Mittag und Abend unterschiedlich!)
+- Küchen-Schwerpunkte dieses Plans: ${themes[0]} und ${themes[1]} – ein Großteil der Gerichte soll daraus kommen
+- Innerhalb des Plans kein Gericht doppelt (außer bewusst als Meal-Prep markierte Portionen)
 - Meal-Prep Gerichte entsprechend markieren
 - JSON kompakt halten: pro Gericht maximal 6 Zutaten, maximal 4 kurze Zubereitungsschritte, keine langen Fließtexte
 - Alle Rezepte vollständig, aber kurz mit Schritt-für-Schritt-Anleitung`;
@@ -1185,7 +1257,7 @@ Wichtig:
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
         max_tokens: 12000,
-        temperature: 0.2,
+        temperature: 0.8,
         system: systemPrompt,
         messages: [{ role: 'user', content: userPrompt }]
       })
@@ -1209,6 +1281,8 @@ Wichtig:
     localStorage.setItem('nc_profile', JSON.stringify(state.profile));
     localStorage.setItem('nc_shopping', JSON.stringify(state.shopping));
 
+    // Verlauf für Abwechslung im nächsten Plan merken
+    recordMealHistory(parsed.plan);
     // Auto-save recipes to library
     autoSaveToLibrary(parsed.plan);
     // Auto-schätze Vorrat aus Einkaufsliste
@@ -1769,6 +1843,7 @@ function populateNewForm() {
   set('new-persons', p.persons);
   set('new-days', p.days);
   set('new-mealprep', p.mealprep);
+  set('new-dinner', p.dinner || 'kalt');
   set('new-shopformat', p.shopformat);
   set('new-allergies', p.allergies === 'keine' ? '' : p.allergies);
   set('new-dislikes', p.dislikes === 'keine' ? '' : p.dislikes);
@@ -1811,7 +1886,8 @@ async function exportData() {
       nc_library: state.library,
       nc_pantry: state.pantry,
       nc_receipts: state.receipts,
-      nc_price_alerts: getStoredJson('nc_price_alerts', [])
+      nc_price_alerts: getStoredJson('nc_price_alerts', []),
+      nc_meal_history: getStoredJson('nc_meal_history', [])
   };
   const json = JSON.stringify(data, null, 2);
   const filename = `nutricoach-backup-${new Date().toISOString().slice(0,10)}.json`;
@@ -1842,6 +1918,7 @@ function importData(event) {
       if (d.nc_pantry !== undefined) localStorage.setItem('nc_pantry', JSON.stringify(d.nc_pantry));
       if (d.nc_receipts !== undefined) localStorage.setItem('nc_receipts', JSON.stringify(d.nc_receipts));
       if (d.nc_price_alerts !== undefined) localStorage.setItem('nc_price_alerts', JSON.stringify(d.nc_price_alerts));
+      if (d.nc_meal_history !== undefined) localStorage.setItem('nc_meal_history', JSON.stringify(d.nc_meal_history));
       location.reload();
     } catch { alert('Ungültige Backup-Datei.'); }
     event.target.value = '';
