@@ -530,6 +530,14 @@ select.input option { background:var(--bg3); }
           </select>
         </div>
         <div class="form-group">
+          <div class="label">Gericht reicht für</div>
+          <select class="input" id="ob-batch">
+            <option value="aus">1 Tag (täglich frisch)</option>
+            <option value="mittag">2 Tage – nur Mittag</option>
+            <option value="beide">2 Tage – Mittag + Abend</option>
+          </select>
+        </div>
+        <div class="form-group">
           <div class="label">Einkaufsliste Format</div>
           <select class="input" id="ob-shopformat">
             <option value="Beides">Beides (Kategorien + nach Rezept)</option>
@@ -722,6 +730,14 @@ select.input option { background:var(--bg3); }
             <option value="kalt">Kalt / schnell</option>
             <option value="gemischt">Gemischt</option>
             <option value="warm">Warm</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <div class="label">Gericht reicht für</div>
+          <select class="input" id="new-batch">
+            <option value="aus">1 Tag (täglich frisch)</option>
+            <option value="mittag">2 Tage – nur Mittag</option>
+            <option value="beide">2 Tage – Mittag + Abend</option>
           </select>
         </div>
         <div class="form-group">
@@ -1065,6 +1081,7 @@ async function generatePlan() {
     diet: document.getElementById('ob-diet').value,
     mealprep: document.getElementById('ob-mealprep').value,
     dinner: document.getElementById('ob-dinner').value,
+    batch: document.getElementById('ob-batch').value,
     cuisines: getSelectedCuisines('ob'),
     shopformat: document.getElementById('ob-shopformat').value,
     allergies: document.getElementById('ob-allergies').value || 'keine',
@@ -1088,6 +1105,7 @@ async function generateNewPlan() {
     diet: document.getElementById('new-diet').value,
     mealprep: document.getElementById('new-mealprep').value,
     dinner: document.getElementById('new-dinner').value,
+    batch: document.getElementById('new-batch').value,
     cuisines: getSelectedCuisines('new'),
     shopformat: document.getElementById('new-shopformat').value,
     allergies: document.getElementById('new-allergies').value || 'keine',
@@ -1140,18 +1158,56 @@ function recordMealHistory(plan) {
 // Startpunkt verschiebt sich pro Plan, damit bei ungerader Verteilung keine Küche dauerhaft vorne liegt.
 const WEEKDAYS = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];
 
-function buildCuisineSchedule(selected, days) {
+// batch: 'aus' | 'mittag' | 'beide' – bei 2-Tage-Gerichten wird an Tag 1, 3, 5, 7 gekocht,
+// der Folgetag isst die Reste. Die Küche bleibt für beide Tage gleich.
+function batchFlags(batch) {
+  return { lunch: batch === 'mittag' || batch === 'beide', dinner: batch === 'beide' };
+}
+
+function buildCuisineSchedule(selected, days, batch) {
   const sel = (selected && selected.length ? selected : DEFAULT_CUISINES).filter(k => CUISINES[k]);
   const n = Math.max(1, Math.min(7, parseInt(days, 10) || 5));
+  const flags = batchFlags(batch);
   const offset = parseInt(localStorage.getItem('nc_cuisine_idx') || '0', 10) || 0;
   localStorage.setItem('nc_cuisine_idx', String((offset + 1) % Math.max(sel.length, 1)));
   const schedule = [];
   for (let i = 0; i < n; i++) {
-    const lunch = sel[(offset + i) % sel.length];
-    const dinner = sel[(offset + i + 1) % sel.length];
-    schedule.push({ day: WEEKDAYS[i], lunch, dinner });
+    const li = flags.lunch ? Math.floor(i / 2) : i;
+    const di = flags.dinner ? Math.floor(i / 2) : i;
+    const lunch = sel[(offset + li) % sel.length];
+    let dinner = sel[(offset + di + 1) % sel.length];
+    if (dinner === lunch && sel.length > 1) dinner = sel[(sel.indexOf(lunch) + 1) % sel.length];
+    const leftover = i % 2 === 1;
+    schedule.push({
+      day: WEEKDAYS[i], lunch, dinner,
+      lunchFrom: flags.lunch && leftover ? WEEKDAYS[i - 1] : null,
+      dinnerFrom: flags.dinner && leftover ? WEEKDAYS[i - 1] : null,
+    });
   }
   return schedule;
+}
+
+// Reste-Tage im Code befüllen: Kopie vom Kochtag, als Rest markiert.
+function applyLeftovers(plan, schedule) {
+  if (!Array.isArray(plan)) return plan;
+  const byDay = {};
+  plan.forEach(d => { byDay[d.day] = d; });
+  return schedule.map((slot, i) => {
+    const src = byDay[slot.day] || plan[i] || { day: slot.day, meals: [] };
+    const meals = [];
+    [['Mittag', slot.lunchFrom], ['Abend', slot.dinnerFrom]].forEach(([type, from]) => {
+      if (from) {
+        const cook = (byDay[from] || plan[i - 1] || { meals: [] }).meals.find(m => m.type === type);
+        if (cook) {
+          meals.push({ ...cook, leftover: true, cookedOn: from });
+          return;
+        }
+      }
+      const own = (src.meals || []).find(m => m.type === type);
+      if (own) meals.push(own);
+    });
+    return { ...src, day: slot.day, meals };
+  });
 }
 
 function cuisineShort(k) {
@@ -1282,8 +1338,19 @@ Das JSON-Objekt muss exakt folgende Struktur haben:
     ? '\n- Diese Gerichte gab es zuletzt – NICHT wiederholen und auch keine Variante davon (gleiches Hauptgericht mit anderer Beilage oder anderem Gewürz zählt als Wiederholung): ' + recentMeals.join(', ')
     : '';
   const selectedCuisines = (profile.cuisines && profile.cuisines.length ? profile.cuisines : DEFAULT_CUISINES).filter(k => CUISINES[k]);
-  const schedule = buildCuisineSchedule(selectedCuisines, profile.days);
-  const scheduleText = schedule.map(d => `  ${d.day}: Mittag = ${cuisineShort(d.lunch)}, Abend = ${cuisineShort(d.dinner)}`).join('\n');
+  const schedule = buildCuisineSchedule(selectedCuisines, profile.days, profile.batch);
+  const scheduleText = schedule.map((d, i) => {
+    const nextL = schedule[i + 1] && schedule[i + 1].lunchFrom === d.day;
+    const nextD = schedule[i + 1] && schedule[i + 1].dinnerFrom === d.day;
+    const l = d.lunchFrom ? `RESTE von ${d.lunchFrom} – nur {"type":"Mittag","leftover":true}` : cuisineShort(d.lunch) + (nextL ? ' – KOCHEN für 2 Tage' : '');
+    const a = d.dinnerFrom ? `RESTE von ${d.dinnerFrom} – nur {"type":"Abend","leftover":true}` : cuisineShort(d.dinner) + (nextD ? ' – KOCHEN für 2 Tage' : '');
+    return `  ${d.day}: Mittag = ${l}, Abend = ${a}`;
+  }).join('\n');
+  const hasBatch = schedule.some(d => d.lunchFrom || d.dinnerFrom);
+  const batchRule = hasBatch ? `
+- 2-Tage-Gerichte: Bei "KOCHEN für 2 Tage" das Rezept für BEIDE Tage schreiben (Zutatenmengen und "servings" verdoppelt, Nährwerte weiterhin pro Portion/Mahlzeit), "mealprepTip" mit Lagerung bis zum nächsten Tag. Nur Gerichte wählen, die sich gut aufwärmen bzw. am Folgetag noch gut schmecken (Eintopf, Schmorgericht, Auflauf, Curry, Ofengemüse; keine knusprigen oder frisch angerichteten Sachen).
+- Bei "RESTE von …" KEIN neues Gericht erfinden, nur das kurze Platzhalter-Objekt ausgeben.
+- Einkaufsliste: Reste-Tage nicht extra einkaufen, sie sind im Kochtag schon enthalten.` : '';
   const cuisineDefs = selectedCuisines.map(k => `  ${cuisineShort(k)} = ${CUISINES[k]}`).join('\n');
   const excluded = Object.keys(CUISINES).filter(k => !selectedCuisines.includes(k)).map(cuisineShort);
 
@@ -1306,7 +1373,7 @@ ${dinnerRule(profile.dinner)}
 - Eiweißquellen über die Woche variieren, nicht jeden Tag dieselbe; günstig bleiben
 - Saisonale Zutaten
 - Küchen-Zuteilung (VERBINDLICH, exakt so umsetzen, nicht tauschen, nicht mischen):
-${scheduleText}
+${scheduleText}${batchRule}
 - Bedeutung der Küchen:
 ${cuisineDefs}
 - Ein Gericht gilt nur dann als passend, wenn es typisch für die zugeteilte Küche ist (eine Bowl mit Sojasoße ist nicht "deutsch")${excluded.length ? '\n- KEINE Gerichte aus diesen Küchen, auch nicht als Fusion oder Gewürz-Variante: ' + excluded.join(', ') : ''}
@@ -1344,7 +1411,7 @@ ${cuisineDefs}
     const data = await response.json();
     const parsed = parseModelJsonResponse(data);
 
-    state.plan = parsed.plan;
+    state.plan = applyLeftovers(parsed.plan, schedule);
     state.profile = profile;
     state.shopping = buildShoppingState(parsed.shopping);
 
@@ -1353,9 +1420,9 @@ ${cuisineDefs}
     localStorage.setItem('nc_shopping', JSON.stringify(state.shopping));
 
     // Verlauf für Abwechslung im nächsten Plan merken
-    recordMealHistory(parsed.plan);
+    recordMealHistory(state.plan);
     // Auto-save recipes to library
-    autoSaveToLibrary(parsed.plan);
+    autoSaveToLibrary(state.plan);
     // Auto-schätze Vorrat aus Einkaufsliste
     autoEstimatePantry(parsed.shopping);
 
@@ -1584,11 +1651,12 @@ function renderPlan() {
                 <span class="macro-chip"><span class="macro-dot" style="background:var(--carbs)"></span>${meal.carbs}g KH</span>
                 <span class="macro-chip"><span class="macro-dot" style="background:var(--fat)"></span>${meal.fat}g Fett</span>
                 <span class="macro-chip">🔥 ${meal.calories} kcal</span>
-                <span class="macro-chip">⏱ ${meal.time} min</span>
+                <span class="macro-chip">⏱ ${meal.leftover ? 'aufwärmen' : meal.time + ' min'}</span>
               </div>
               <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">
                 <span class="meal-badge">${meal.difficulty}</span>
                 ${meal.mealprep ? '<span class="meal-badge mealprep">🍱 Meal-Prep</span>' : ''}
+                ${meal.leftover ? `<span class="meal-badge mealprep">♻️ Rest von ${meal.cookedOn}</span>` : ''}
               </div>
             </div>
             <div class="meal-actions">
@@ -1915,6 +1983,7 @@ function populateNewForm() {
   set('new-days', p.days);
   set('new-mealprep', p.mealprep);
   set('new-dinner', p.dinner || 'kalt');
+  set('new-batch', p.batch || 'aus');
   const cz = (p.cuisines && p.cuisines.length) ? p.cuisines : DEFAULT_CUISINES;
   document.querySelectorAll('input[name="new-cuisine"]').forEach(cb => { cb.checked = cz.includes(cb.value); });
   set('new-shopformat', p.shopformat);
