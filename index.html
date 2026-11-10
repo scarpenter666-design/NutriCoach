@@ -1135,13 +1135,27 @@ function recordMealHistory(plan) {
   localStorage.setItem('nc_meal_history', JSON.stringify(history.slice(-6)));
 }
 
-// Bei mehr als 2 gewählten Küchen: pro Plan 2 davon, rotierend
-function pickCuisineThemes(selected) {
+// Feste, ausgewogene Zuteilung: jede Mahlzeit bekommt ihre Küche vorab.
+// Mittag und Abend eines Tages unterscheiden sich, über die Tage wird rotiert.
+// Startpunkt verschiebt sich pro Plan, damit bei ungerader Verteilung keine Küche dauerhaft vorne liegt.
+const WEEKDAYS = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];
+
+function buildCuisineSchedule(selected, days) {
   const sel = (selected && selected.length ? selected : DEFAULT_CUISINES).filter(k => CUISINES[k]);
-  if (sel.length <= 2) return sel;
-  const idx = parseInt(localStorage.getItem('nc_cuisine_idx') || '0', 10) || 0;
-  localStorage.setItem('nc_cuisine_idx', String((idx + 2) % sel.length));
-  return [sel[idx % sel.length], sel[(idx + 1) % sel.length]];
+  const n = Math.max(1, Math.min(7, parseInt(days, 10) || 5));
+  const offset = parseInt(localStorage.getItem('nc_cuisine_idx') || '0', 10) || 0;
+  localStorage.setItem('nc_cuisine_idx', String((offset + 1) % Math.max(sel.length, 1)));
+  const schedule = [];
+  for (let i = 0; i < n; i++) {
+    const lunch = sel[(offset + i) % sel.length];
+    const dinner = sel[(offset + i + 1) % sel.length];
+    schedule.push({ day: WEEKDAYS[i], lunch, dinner });
+  }
+  return schedule;
+}
+
+function cuisineShort(k) {
+  return CUISINES[k].split(' (')[0].split(',')[0];
 }
 
 function dinnerRule(dinner) {
@@ -1187,6 +1201,7 @@ Das JSON-Objekt muss exakt folgende Struktur haben:
       "meals": [
         {
           "type": "Mittag",
+          "cuisine": "zugeteilte Küche laut Zuteilung",
           "name": "Gerichtname",
           "mealprep": true/false,
           "calories": 650,
@@ -1266,9 +1281,11 @@ Das JSON-Objekt muss exakt folgende Struktur haben:
   const recentInfo = recentMeals.length > 0
     ? '\n- Diese Gerichte gab es zuletzt – NICHT wiederholen und auch keine Variante davon (gleiches Hauptgericht mit anderer Beilage oder anderem Gewürz zählt als Wiederholung): ' + recentMeals.join(', ')
     : '';
-  const themeKeys = pickCuisineThemes(profile.cuisines);
-  const themeText = themeKeys.map(k => CUISINES[k]).join(' und ');
-  const excluded = Object.keys(CUISINES).filter(k => !(profile.cuisines || DEFAULT_CUISINES).includes(k)).map(k => CUISINES[k].split(' (')[0].split(',')[0]);
+  const selectedCuisines = (profile.cuisines && profile.cuisines.length ? profile.cuisines : DEFAULT_CUISINES).filter(k => CUISINES[k]);
+  const schedule = buildCuisineSchedule(selectedCuisines, profile.days);
+  const scheduleText = schedule.map(d => `  ${d.day}: Mittag = ${cuisineShort(d.lunch)}, Abend = ${cuisineShort(d.dinner)}`).join('\n');
+  const cuisineDefs = selectedCuisines.map(k => `  ${cuisineShort(k)} = ${CUISINES[k]}`).join('\n');
+  const excluded = Object.keys(CUISINES).filter(k => !selectedCuisines.includes(k)).map(cuisineShort);
 
   const userPrompt = `Erstelle einen Ernährungsplan mit folgenden Vorgaben:
 - Fitnessziel: ${profile.goal}
@@ -1288,7 +1305,12 @@ ${dinnerRule(profile.dinner)}
 - Mind. 30g Eiweiß pro Mahlzeit (abends z.B. über Quark, Hüttenkäse, Eier, Thunfisch, Räucherlachs, Hähnchenaufschnitt, Tofu, Bohnen)
 - Eiweißquellen über die Woche variieren, nicht jeden Tag dieselbe; günstig bleiben
 - Saisonale Zutaten
-- Küche: AUSSCHLIESSLICH ${themeText}. Jedes Gericht muss klar dazu passen${excluded.length ? '\n- KEINE Gerichte aus diesen Küchen, auch nicht als Fusion oder Gewürz-Variante: ' + excluded.join(', ') : ''}
+- Küchen-Zuteilung (VERBINDLICH, exakt so umsetzen, nicht tauschen, nicht mischen):
+${scheduleText}
+- Bedeutung der Küchen:
+${cuisineDefs}
+- Ein Gericht gilt nur dann als passend, wenn es typisch für die zugeteilte Küche ist (eine Bowl mit Sojasoße ist nicht "deutsch")${excluded.length ? '\n- KEINE Gerichte aus diesen Küchen, auch nicht als Fusion oder Gewürz-Variante: ' + excluded.join(', ') : ''}
+- Bei Meal-Prep: vorgekochte Portionen dürfen nur an Tagen eingeplant werden, denen dieselbe Küche zugeteilt ist
 - Innerhalb des Plans kein Gericht doppelt (außer bewusst als Meal-Prep markierte Portionen)
 - Meal-Prep Gerichte entsprechend markieren
 - JSON kompakt halten: pro Gericht maximal 6 Zutaten, maximal 4 kurze Zubereitungsschritte, keine langen Fließtexte
