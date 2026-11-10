@@ -380,6 +380,17 @@ select.input option { background:var(--bg3); }
 .settings-section { margin-bottom:24px; }
 .settings-title { font-size:0.85rem; color:var(--text3); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:12px; }
 
+/* ── CHIPS (Küchen-Auswahl) ── */
+.chips { display:flex; flex-wrap:wrap; gap:8px; }
+.chip { cursor:pointer; }
+.chip input { position:absolute; opacity:0; pointer-events:none; }
+.chip span {
+  display:inline-block; padding:8px 14px; border-radius:999px; font-size:0.85rem;
+  background:var(--bg3); border:1px solid var(--border); color:var(--text2);
+}
+.chip input:checked + span { background:rgba(126,200,80,0.15); border-color:var(--accent); color:var(--accent); }
+.chip input:focus-visible + span { outline:2px solid var(--accent); outline-offset:2px; }
+
 /* ── TAGS ── */
 .tag {
   display:inline-block; background:rgba(126,200,80,0.1);
@@ -564,6 +575,19 @@ select.input option { background:var(--bg3); }
         </div>
       </div>
       <div class="form-group" style="margin-top:16px">
+        <div class="label">Küchen <span style="color:var(--text3);font-size:0.72rem;text-transform:none">Mehrfachauswahl</span></div>
+        <div class="chips">
+          <label class="chip"><input type="checkbox" name="ob-cuisine" value="deutsch" checked><span>Deutsch (leicht)</span></label>
+          <label class="chip"><input type="checkbox" name="ob-cuisine" value="mediterran" checked><span>Mediterran</span></label>
+          <label class="chip"><input type="checkbox" name="ob-cuisine" value="skandinavisch"><span>Skandinavisch</span></label>
+          <label class="chip"><input type="checkbox" name="ob-cuisine" value="franzoesisch"><span>Französisch</span></label>
+          <label class="chip"><input type="checkbox" name="ob-cuisine" value="asiatisch"><span>Asiatisch</span></label>
+          <label class="chip"><input type="checkbox" name="ob-cuisine" value="orientalisch"><span>Orientalisch</span></label>
+          <label class="chip"><input type="checkbox" name="ob-cuisine" value="indisch"><span>Indisch</span></label>
+          <label class="chip"><input type="checkbox" name="ob-cuisine" value="mexikanisch"><span>Mexikanisch</span></label>
+        </div>
+      </div>
+      <div class="form-group" style="margin-top:16px">
         <div class="label">Allergien & Unverträglichkeiten</div>
         <input type="text" class="input" id="ob-allergies" placeholder="z.B. Laktose, Gluten, Nüsse... (oder leer lassen)">
       </div>
@@ -743,6 +767,19 @@ select.input option { background:var(--bg3); }
         <div class="form-group">
           <div class="label">Ø Trainingsverbrauch (kcal/Tag) <span style="color:var(--text3);font-size:0.72rem">aus IronLog o.ä.</span></div>
           <input type="number" class="input" id="new-training" placeholder="z.B. 350 (0 = kein Training)" min="0" max="2000">
+        </div>
+      </div>
+      <div class="form-group" style="margin-top:16px">
+        <div class="label">Küchen <span style="color:var(--text3);font-size:0.72rem;text-transform:none">Mehrfachauswahl</span></div>
+        <div class="chips">
+          <label class="chip"><input type="checkbox" name="new-cuisine" value="deutsch" checked><span>Deutsch (leicht)</span></label>
+          <label class="chip"><input type="checkbox" name="new-cuisine" value="mediterran" checked><span>Mediterran</span></label>
+          <label class="chip"><input type="checkbox" name="new-cuisine" value="skandinavisch"><span>Skandinavisch</span></label>
+          <label class="chip"><input type="checkbox" name="new-cuisine" value="franzoesisch"><span>Französisch</span></label>
+          <label class="chip"><input type="checkbox" name="new-cuisine" value="asiatisch"><span>Asiatisch</span></label>
+          <label class="chip"><input type="checkbox" name="new-cuisine" value="orientalisch"><span>Orientalisch</span></label>
+          <label class="chip"><input type="checkbox" name="new-cuisine" value="indisch"><span>Indisch</span></label>
+          <label class="chip"><input type="checkbox" name="new-cuisine" value="mexikanisch"><span>Mexikanisch</span></label>
         </div>
       </div>
       <div class="form-group" style="margin-top:16px">
@@ -1028,6 +1065,7 @@ async function generatePlan() {
     diet: document.getElementById('ob-diet').value,
     mealprep: document.getElementById('ob-mealprep').value,
     dinner: document.getElementById('ob-dinner').value,
+    cuisines: getSelectedCuisines('ob'),
     shopformat: document.getElementById('ob-shopformat').value,
     allergies: document.getElementById('ob-allergies').value || 'keine',
     dislikes: document.getElementById('ob-dislikes').value || 'keine',
@@ -1050,6 +1088,7 @@ async function generateNewPlan() {
     diet: document.getElementById('new-diet').value,
     mealprep: document.getElementById('new-mealprep').value,
     dinner: document.getElementById('new-dinner').value,
+    cuisines: getSelectedCuisines('new'),
     shopformat: document.getElementById('new-shopformat').value,
     allergies: document.getElementById('new-allergies').value || 'keine',
     dislikes: document.getElementById('new-dislikes').value || 'keine',
@@ -1064,16 +1103,22 @@ async function generateNewPlan() {
 }
 
 // ── ABWECHSLUNG: Verlauf + Küchen-Rotation ──
-const CUISINE_THEMES = [
-  'mediterran (italienisch, griechisch, spanisch)',
-  'asiatisch (thailändisch, japanisch, koreanisch, vietnamesisch)',
-  'deutsche & österreichische Hausmannskost, modern interpretiert',
-  'orientalisch & levantinisch (türkisch, libanesisch, persisch)',
-  'mexikanisch & lateinamerikanisch',
-  'indisch & südasiatisch',
-  'skandinavisch & osteuropäisch',
-  'französisch & Bistro-Küche',
-];
+const CUISINES = {
+  deutsch: 'deutsche Hausmannskost, kalorienbewusst und leicht interpretiert (mageres Fleisch, viel Gemüse, Kartoffeln, Vollkorn; keine Sahnesoßen, nichts Frittiertes)',
+  mediterran: 'mediterran (italienisch, griechisch, spanisch)',
+  skandinavisch: 'skandinavisch',
+  franzoesisch: 'französische Bistro-Küche, leicht',
+  asiatisch: 'asiatisch (thailändisch, japanisch, koreanisch, vietnamesisch)',
+  orientalisch: 'orientalisch (türkisch, libanesisch, persisch)',
+  indisch: 'indisch',
+  mexikanisch: 'mexikanisch',
+};
+const DEFAULT_CUISINES = ['deutsch', 'mediterran'];
+
+function getSelectedCuisines(prefix) {
+  const sel = [...document.querySelectorAll(`input[name="${prefix}-cuisine"]:checked`)].map(cb => cb.value);
+  return sel.length ? sel : DEFAULT_CUISINES;
+}
 
 // Letzte Gerichte (max. 3 Pläne) – Fallback auf Bibliothek für Altdaten
 function getRecentMealNames() {
@@ -1090,11 +1135,13 @@ function recordMealHistory(plan) {
   localStorage.setItem('nc_meal_history', JSON.stringify(history.slice(-6)));
 }
 
-// Pro Plan zwei Küchen-Schwerpunkte, rotierend
-function pickCuisineThemes() {
+// Bei mehr als 2 gewählten Küchen: pro Plan 2 davon, rotierend
+function pickCuisineThemes(selected) {
+  const sel = (selected && selected.length ? selected : DEFAULT_CUISINES).filter(k => CUISINES[k]);
+  if (sel.length <= 2) return sel;
   const idx = parseInt(localStorage.getItem('nc_cuisine_idx') || '0', 10) || 0;
-  localStorage.setItem('nc_cuisine_idx', String((idx + 2) % CUISINE_THEMES.length));
-  return [CUISINE_THEMES[idx % CUISINE_THEMES.length], CUISINE_THEMES[(idx + 1) % CUISINE_THEMES.length]];
+  localStorage.setItem('nc_cuisine_idx', String((idx + 2) % sel.length));
+  return [sel[idx % sel.length], sel[(idx + 1) % sel.length]];
 }
 
 function dinnerRule(dinner) {
@@ -1219,7 +1266,9 @@ Das JSON-Objekt muss exakt folgende Struktur haben:
   const recentInfo = recentMeals.length > 0
     ? '\n- Diese Gerichte gab es zuletzt – NICHT wiederholen und auch keine Variante davon (gleiches Hauptgericht mit anderer Beilage oder anderem Gewürz zählt als Wiederholung): ' + recentMeals.join(', ')
     : '';
-  const themes = pickCuisineThemes();
+  const themeKeys = pickCuisineThemes(profile.cuisines);
+  const themeText = themeKeys.map(k => CUISINES[k]).join(' und ');
+  const excluded = Object.keys(CUISINES).filter(k => !(profile.cuisines || DEFAULT_CUISINES).includes(k)).map(k => CUISINES[k].split(' (')[0].split(',')[0]);
 
   const userPrompt = `Erstelle einen Ernährungsplan mit folgenden Vorgaben:
 - Fitnessziel: ${profile.goal}
@@ -1239,7 +1288,7 @@ ${dinnerRule(profile.dinner)}
 - Mind. 30g Eiweiß pro Mahlzeit (abends z.B. über Quark, Hüttenkäse, Eier, Thunfisch, Räucherlachs, Hähnchenaufschnitt, Tofu, Bohnen)
 - Eiweißquellen über die Woche variieren, nicht jeden Tag dieselbe; günstig bleiben
 - Saisonale Zutaten
-- Küchen-Schwerpunkte dieses Plans: ${themes[0]} und ${themes[1]} – ein Großteil der Gerichte soll daraus kommen
+- Küche: AUSSCHLIESSLICH ${themeText}. Jedes Gericht muss klar dazu passen${excluded.length ? '\n- KEINE Gerichte aus diesen Küchen, auch nicht als Fusion oder Gewürz-Variante: ' + excluded.join(', ') : ''}
 - Innerhalb des Plans kein Gericht doppelt (außer bewusst als Meal-Prep markierte Portionen)
 - Meal-Prep Gerichte entsprechend markieren
 - JSON kompakt halten: pro Gericht maximal 6 Zutaten, maximal 4 kurze Zubereitungsschritte, keine langen Fließtexte
@@ -1844,6 +1893,8 @@ function populateNewForm() {
   set('new-days', p.days);
   set('new-mealprep', p.mealprep);
   set('new-dinner', p.dinner || 'kalt');
+  const cz = (p.cuisines && p.cuisines.length) ? p.cuisines : DEFAULT_CUISINES;
+  document.querySelectorAll('input[name="new-cuisine"]').forEach(cb => { cb.checked = cz.includes(cb.value); });
   set('new-shopformat', p.shopformat);
   set('new-allergies', p.allergies === 'keine' ? '' : p.allergies);
   set('new-dislikes', p.dislikes === 'keine' ? '' : p.dislikes);
