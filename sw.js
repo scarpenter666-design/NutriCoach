@@ -1,5 +1,5 @@
 // ── Version erhöhen = Update wird erkannt ──
-const VERSION = 'nutricoach-v12';
+const VERSION = 'nutricoach-v13';
 const ASSETS = ['./index.html', './manifest.json', './icon.svg'];
 
 self.addEventListener('install', e => {
@@ -12,7 +12,7 @@ self.addEventListener('install', e => {
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== VERSION).map(k => caches.delete(k)))
+      Promise.all(keys.filter(k => k.startsWith('nutricoach-') && k !== VERSION).map(k => caches.delete(k)))
     ).then(() => clients.claim())
   );
 });

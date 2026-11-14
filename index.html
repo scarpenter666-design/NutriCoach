@@ -2013,7 +2013,9 @@ function clearLibrary() {
 }
 function resetAll() {
   if (!confirm('ALLE Daten löschen? (Plan, Einkaufsliste, Bibliothek, API-Key)')) return;
-  localStorage.clear();
+  Object.keys(localStorage)
+    .filter(k => k.startsWith('nc_'))
+    .forEach(k => localStorage.removeItem(k));
   location.reload();
 }
 
